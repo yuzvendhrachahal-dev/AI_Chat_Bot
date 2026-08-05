@@ -1,144 +1,404 @@
-# AstroVed.AI — Local Development Setup
+# AstroVed.AI Chatbot & Agent Dashboard
 
-## Prerequisites
-- Python 3.9 or higher — https://www.python.org/downloads/
-
----
-
-## 1. Extract ZIP File
-
-```
-1. Download the ZIP file provided
-2. Right-click the ZIP file
-3. Click "Extract All"
-4. Choose a folder location (e.g., Desktop or Documents)
-5. Click "Extract"
-6. Open the extracted folder
-```
+AI-powered AstroVed chatbot with Human Agent Dashboard.
 
 ---
 
-## 2. Open Terminal in Project Folder
+# Requirements
 
-**Windows:**
-```
-1. Open the extracted folder
-2. Click on the address bar at the top
-3. Type "cmd" and press Enter
-```
-
-**Mac/Linux:**
-```
-1. Right-click inside the extracted folder
-2. Click "Open in Terminal"
-```
+- Python 3.10 or above
+- Git
+- Internet connection
+- Groq API Key
+- AstroVed JWT Token
 
 ---
 
-## 3. Create Virtual Environment
+# 1. Clone Repository
 
 ```bash
-python -m venv venv
+git clone <YOUR_GITHUB_REPO_URL>
+cd AI_Chat_Bot
 ```
 
-**Activate — Windows:**
-```bash
-venv\Scripts\activate
-```
-
-**Activate — Mac/Linux:**
-```bash
-source venv/bin/activate
-```
-
-You should see `(venv)` at the start of your terminal line.
+Or extract the ZIP file if provided.
 
 ---
 
-## 4. Install Dependencies
+# 2. Create Virtual Environment
+
+### Windows
+
+```bash
+python -m venv vbot
+```
+
+Activate
+
+```bash
+vbot\Scripts\activate
+```
+
+---
+
+### macOS / Linux
+
+```bash
+python3 -m venv vbot
+```
+
+Activate
+
+```bash
+source vbot/bin/activate
+```
+
+You should now see
+
+```text
+(vbot)
+```
+
+---
+
+# 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Wait for all packages to install (takes 1-2 minutes).
-
 ---
 
-## 5. Create .env File
+# 4. Configure Environment Variables
 
-Create a new file named `.env` inside the project folder and paste this:
+Create a file named
 
-```env
-GROQ_API_KEY=your_groq_api_key_here
-ASTROVED_JWT_TOKEN=your_jwt_token_here
-GITHUB_TOKEN=your_github_token_here
-GITHUB_REPO=yourusername/astroved-chatbot
+```text
+.env
 ```
 
-Replace the values with your actual API keys.
+inside the project root.
 
-> Get GROQ API Key free at: https://console.groq.com
+Example:
+
+```env
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+
+ASTROVED_JWT_TOKEN=YOUR_ASTROVED_TOKEN
+
+GITHUB_TOKEN=YOUR_GITHUB_TOKEN
+
+GITHUB_REPO=YOUR_USERNAME/AI_Chat_Bot
+```
 
 ---
 
-## 6. Run Development Server
+# 5. Run Project
+
+```bash
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+When everything loads correctly, you should see
+
+```text
+Loaded 690 page chunks from knowledge base
+
+Application startup complete.
+
+Uvicorn running on
+
+http://127.0.0.1:8000
+```
+
+---
+
+# Local URLs
+
+## API Status
+
+```
+http://127.0.0.1:8000/
+```
+
+Returns
+
+```json
+{
+    "status":"AstroVed.AI is online"
+}
+```
+
+---
+
+## Swagger API
+
+```
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## Chatbot
+
+```
+http://127.0.0.1:8000/app
+```
+
+---
+
+## Agent Dashboard
+
+```
+http://127.0.0.1:8000/agent/dashboard
+```
+
+---
+
+# Agent Login
+
+Username
+
+```
+agent1
+```
+
+Password
+
+```
+astroved123
+```
+
+---
+
+# Project Flow
+
+```
+User
+
+↓
+
+/app
+
+↓
+
+/chat API
+
+↓
+
+Knowledge Base Search
+
+↓
+
+Groq LLM
+
+↓
+
+Bot Response
+
+↓
+
+CRM Keywords?
+
+↓
+
+No
+│
+└── Continue Chat
+
+Yes
+
+↓
+
+Agent Queue
+
+↓
+
+/agent/dashboard
+
+↓
+
+Agent Reply
+
+↓
+
+User Receives Reply
+```
+
+---
+
+# Common Commands
+
+Activate Environment
+
+Windows
+
+```bash
+vbot\Scripts\activate
+```
+
+macOS/Linux
+
+```bash
+source vbot/bin/activate
+```
+
+Run
+
+```bash
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Deactivate
+
+```bash
+deactivate
+```
+
+---
+
+# Common Errors
+
+## Python not found
+
+Use
+
+```bash
+python3
+```
+
+instead of
+
+```bash
+python
+```
+
+---
+
+## Uvicorn not found
+
+```bash
+pip install uvicorn
+```
+
+---
+
+## Missing package
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Port already in use
+
+Run
+
+```bash
+lsof -i :8000
+```
+
+Kill process
+
+```bash
+kill -9 <PID>
+```
+
+or simply use another port
 
 ```bash
 uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-You should see:
+---
+
+## API Key Error
+
+Check
+
 ```
-INFO: Uvicorn running on http://127.0.0.1:8001
-INFO: Application startup complete.
+.env
+```
+
+contains
+
+```
+GROQ_API_KEY
 ```
 
 ---
 
-## 7. Access Locally
+## Chatbot says
 
-| Page | URL |
-|------|-----|
-| API Status | http://127.0.0.1:8001/ |
-| Chatbot | http://127.0.0.1:8001/app |
-| Dashboard | http://127.0.0.1:8001/agent/dashboard |
+```
+Server is waking up...
+```
 
-Open any of the above URLs in your browser.
+This usually means the frontend is pointing to the wrong API URL.
+
+Verify that:
+
+```javascript
+var API = window.location.origin;
+```
+
+is present in
+
+```
+index.html
+```
+
+and
+
+```
+widget_content.js
+```
+
+Then hard refresh the browser.
 
 ---
 
-## Dashboard Login
+# Render Deployment
 
-| Field | Value |
-|-------|-------|
-| Username | agent1 |
-| Password | astroved123 |
+Build Command
+
+```bash
+pip install -r requirements.txt
+```
+
+Start Command
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+Environment Variables
+
+```
+GROQ_API_KEY
+
+ASTROVED_JWT_TOKEN
+
+GITHUB_TOKEN
+
+GITHUB_REPO
+```
 
 ---
 
-## Common Errors
+# Current Status
 
-**Error: `python` not found**
-```bash
-# Try this instead:
-python3 -m venv venv
-```
+✅ Chatbot
 
-**Error: `venv\Scripts\activate` not working (Windows)**
-```bash
-# Run this first, then try again:
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
+✅ Agent Dashboard
 
-**Error: `uvicorn` not found**
-```bash
-pip install uvicorn
-```
+✅ Human Handoff
 
-**Error: Port already in use**
-```bash
-# Use a different port:
-uvicorn main:app --reload --host 127.0.0.1 --port 8002
-# Then open: http://127.0.0.1:8002
-```
+✅ Knowledge Base Search
+
+✅ Groq AI Integration
+
+✅ SQLite Database
+
+✅ Local Development Ready
