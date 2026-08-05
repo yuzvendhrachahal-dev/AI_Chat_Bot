@@ -1,0 +1,144 @@
+# AstroVed.AI — Local Development Setup
+
+## Prerequisites
+- Python 3.9 or higher — https://www.python.org/downloads/
+
+---
+
+## 1. Extract ZIP File
+
+```
+1. Download the ZIP file provided
+2. Right-click the ZIP file
+3. Click "Extract All"
+4. Choose a folder location (e.g., Desktop or Documents)
+5. Click "Extract"
+6. Open the extracted folder
+```
+
+---
+
+## 2. Open Terminal in Project Folder
+
+**Windows:**
+```
+1. Open the extracted folder
+2. Click on the address bar at the top
+3. Type "cmd" and press Enter
+```
+
+**Mac/Linux:**
+```
+1. Right-click inside the extracted folder
+2. Click "Open in Terminal"
+```
+
+---
+
+## 3. Create Virtual Environment
+
+```bash
+python -m venv venv
+```
+
+**Activate — Windows:**
+```bash
+venv\Scripts\activate
+```
+
+**Activate — Mac/Linux:**
+```bash
+source venv/bin/activate
+```
+
+You should see `(venv)` at the start of your terminal line.
+
+---
+
+## 4. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+Wait for all packages to install (takes 1-2 minutes).
+
+---
+
+## 5. Create .env File
+
+Create a new file named `.env` inside the project folder and paste this:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+ASTROVED_JWT_TOKEN=your_jwt_token_here
+GITHUB_TOKEN=your_github_token_here
+GITHUB_REPO=yourusername/astroved-chatbot
+```
+
+Replace the values with your actual API keys.
+
+> Get GROQ API Key free at: https://console.groq.com
+
+---
+
+## 6. Run Development Server
+
+```bash
+uvicorn main:app --reload --host 127.0.0.1 --port 8001
+```
+
+You should see:
+```
+INFO: Uvicorn running on http://127.0.0.1:8001
+INFO: Application startup complete.
+```
+
+---
+
+## 7. Access Locally
+
+| Page | URL |
+|------|-----|
+| API Status | http://127.0.0.1:8001/ |
+| Chatbot | http://127.0.0.1:8001/app |
+| Dashboard | http://127.0.0.1:8001/agent/dashboard |
+
+Open any of the above URLs in your browser.
+
+---
+
+## Dashboard Login
+
+| Field | Value |
+|-------|-------|
+| Username | agent1 |
+| Password | astroved123 |
+
+---
+
+## Common Errors
+
+**Error: `python` not found**
+```bash
+# Try this instead:
+python3 -m venv venv
+```
+
+**Error: `venv\Scripts\activate` not working (Windows)**
+```bash
+# Run this first, then try again:
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**Error: `uvicorn` not found**
+```bash
+pip install uvicorn
+```
+
+**Error: Port already in use**
+```bash
+# Use a different port:
+uvicorn main:app --reload --host 127.0.0.1 --port 8002
+# Then open: http://127.0.0.1:8002
+```
