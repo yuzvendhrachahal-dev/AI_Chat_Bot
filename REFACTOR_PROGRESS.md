@@ -194,11 +194,44 @@ Pending
 Notes:
 The knowledge base subsystem is now isolated into a reusable service without modifying search behaviour or chatbot responses.
 
+### ✅ Step 6 – Language Detection Service Extraction
+
+Status: Completed
+
+Objective:
+Extract language detection functionality from `main.py` into a dedicated reusable service.
+
+Changes:
+- Created `app/services/language_service.py`
+- Moved `detect_language()`
+- Moved language helper constants (if any)
+- Updated imports in `main.py`
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes (successfully verified via Python import checks)
+
+Commit:
+Pending
+
+Notes:
+Language detection is now isolated as an independent reusable service while preserving identical chatbot behaviour.
+
 ---
 
 ## Upcoming Steps
 
-- Step 6 – Extract Language Detection Service
 - Step 7 – Extract Human Handoff Service
 - Step 8 – Extract Chat Service
 - Step 9 – Extract Agent Service

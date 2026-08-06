@@ -23,14 +23,13 @@ from app.database.database import (
 )
 from app.prompts.prompts import BASE_SYSTEM_PROMPT, TOPIC_FORCE_INSTRUCTION, LANGUAGE_INSTRUCTIONS
 from app.services.kb_service import load_knowledge_base, reload_knowledge_base, search_knowledge, search_knowledge_for_url, KB_CHUNKS
+from app.services.language_service import detect_language
 
 
 def needs_handoff(text: str) -> bool:
     return any(k in text.lower() for k in HANDOFF_KEYWORDS)
 
-def detect_language(text: str) -> str:
-    tamil_chars = sum(1 for c in text if '\u0B80' <= c <= '\u0BFF')
-    return "tamil" if tamil_chars > 0 else "english"
+
 
 
 
