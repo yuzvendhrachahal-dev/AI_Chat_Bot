@@ -5,11 +5,38 @@ Handles routes for:
   - GET /
   - GET /app
   - GET /widget.js
-
-Routes are not yet moved here. This file is the infrastructure scaffold.
 """
 
 from fastapi import APIRouter
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, Response
+
+from app.services.kb_service import KB_CHUNKS
+from app.config.settings import GROQ_API_KEY
+from topic_map import TOPIC_MAP
 
 router = APIRouter()
+
+
+# ── Routes ─────────────────────────────────────────────────────────────────────
+
+@router.get("/")
+def root():
+    return {
+        "status": "AstroVed.AI is online",
+        "model": "llama-3.1-8b-instant",
+        "api_key_loaded": bool(GROQ_API_KEY),
+        "knowledge_chunks_loaded": len(KB_CHUNKS),
+        "topics_loaded": len(TOPIC_MAP),
+    }
+
+
+@router.get("/app")
+async def serve_chatbot():
+    return FileResponse("index.html")
+
+
+@router.get("/widget.js")
+async def serve_widget():
+    with open("widget_content.js", "r", encoding="utf-8") as f:
+        content = f.read()
+    return Response(content=content, media_type="application/javascript")
