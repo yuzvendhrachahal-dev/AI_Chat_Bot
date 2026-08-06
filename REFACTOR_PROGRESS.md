@@ -228,11 +228,45 @@ Pending
 Notes:
 Language detection is now isolated as an independent reusable service while preserving identical chatbot behaviour.
 
+### ✅ Step 7 – Human Handoff Service Extraction
+
+Status: Completed
+
+Objective:
+Extract CRM handoff detection and session management into a dedicated service.
+
+Changes:
+- Created `app/services/handoff_service.py`
+- Moved `needs_handoff()`
+- Moved `create_or_update_handoff()`
+- Moved CRM helper functions
+- Updated imports in `main.py`
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes (successfully verified via Python import checks)
+
+Commit:
+Pending
+
+Notes:
+The CRM handoff workflow is now isolated into a dedicated service while preserving identical behaviour for chatbot-to-agent transitions.
+
 ---
 
 ## Upcoming Steps
 
-- Step 7 – Extract Human Handoff Service
 - Step 8 – Extract Chat Service
 - Step 9 – Extract Agent Service
 - Step 10 – Extract API Routes

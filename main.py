@@ -14,7 +14,7 @@ import httpx
 import os
 from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_API_BASE, ASTROVED_JWT_TOKEN
 from app.database.database import (
-    init_db, seed_default_agents, get_history, save_message, create_or_update_handoff,
+    init_db, seed_default_agents, get_history, save_message,
     create_or_update_session, get_admin_users, get_and_update_session_status,
     get_session_poll_data, get_agent_by_username, get_active_agent_sessions,
     get_session_messages, claim_session, touch_session, close_session,
@@ -24,10 +24,11 @@ from app.database.database import (
 from app.prompts.prompts import BASE_SYSTEM_PROMPT, TOPIC_FORCE_INSTRUCTION, LANGUAGE_INSTRUCTIONS
 from app.services.kb_service import load_knowledge_base, reload_knowledge_base, search_knowledge, search_knowledge_for_url, KB_CHUNKS
 from app.services.language_service import detect_language
+from app.services.handoff_service import needs_handoff, create_or_update_handoff
 
 
-def needs_handoff(text: str) -> bool:
-    return any(k in text.lower() for k in HANDOFF_KEYWORDS)
+
+
 
 
 
