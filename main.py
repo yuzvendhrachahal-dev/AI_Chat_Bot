@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from app.services.chat_service import process_chat
+from app.routes.chat import router as chat_router
 from app.services.agent_service import (
     process_poll_session,
     build_agent_events_response,
@@ -26,8 +27,8 @@ import os
 from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_API_BASE, ASTROVED_JWT_TOKEN
 from app.database.database import (
     init_db, seed_default_agents, get_history, save_message,
-    create_or_update_session, get_admin_users, get_and_update_session_status,
-    get_session_poll_data, get_waiting_or_active_sessions, save_user_registration,
+    get_admin_users, get_and_update_session_status,
+    get_waiting_or_active_sessions,
     get_all_registrations
 )
 from app.services.kb_service import KB_CHUNKS
@@ -73,8 +74,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
 
 init_db(); seed_default_agents()
 
-class ChatRequest(BaseModel):
-    session_id: str; message: str; user_name: str = ""; user_email: str = ""; user_phone: str = ""
+app.include_router(chat_router)
 
 class HandoffRequest(BaseModel):
     session_id: str; user_name: str = ""; user_email: str = ""; user_phone: str = ""
@@ -88,9 +88,6 @@ class AgentReplyRequest(BaseModel):
 
 class CloseSessionRequest(BaseModel):
     session_id: str
-
-class SessionStartRequest(BaseModel):
-    session_id: str; user_name: str = ""; user_email: str = ""; user_phone: str = ""
     
 
 @app.get("/agent/events")
@@ -98,31 +95,10 @@ async def agent_events():
     """SSE stream for dashboard — pushes new session alerts"""
     return build_agent_events_response()
 
-@app.post("/session/start")
-async def session_start(req: SessionStartRequest):
-    try:
-        create_or_update_session(req.session_id, req.user_name, req.user_email, req.user_phone)
-        return {"status": "ok"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/admin/users")
 async def admin_users():
     rows = get_admin_users()
     return {"users": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"status":r[4],"issue_type":r[5],"created_at":r[6],"updated_at":r[7]} for r in rows]}
-
-
-
-@app.post("/chat")
-async def chat(req: ChatRequest):
-    return await process_chat(req)
-
-@app.get("/poll/{session_id}")
-async def poll_session(session_id: str, since_id: int = 0):
-    try:
-        return process_poll_session(session_id, since_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/handoff")
 async def handoff(req: HandoffRequest):
@@ -803,66 +779,7 @@ function drawDonut(stats,total){
 </html>"""
 
 # Add at top
-# Add at top
-import httpx
-
-class RegisterRequest(BaseModel):
-    session_id: str
-    user_name: str = ""
-    user_email: str = ""
-    user_phone: str = ""
-    country_code: str = "+91"
-
-@app.post("/user/register")
-async def register_user(req: RegisterRequest):
-    print(f"Register attempt: {req.user_name} | {req.user_email} | {req.user_phone}")
-    
-    # If no JWT token configured, still save to local DB and proceed
-    if not ASTROVED_JWT_TOKEN:
-        print("WARNING: ASTROVED_JWT_TOKEN not set — saving to local DB only")
-        try:
-            save_user_registration(req.session_id, req.user_name, req.user_email, req.user_phone, req.country_code)
-        except Exception as db_err:
-            print(f"DB save error: {db_err}")
-        
-        return {"StatusCode": 200, "Status": "OK", "Message": "Saved locally"}
-    
-    # If JWT token exists, call AstroVed API
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(
-                f"{ASTROVED_API_BASE}/UserAccount/AddChatBotDetails",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {ASTROVED_JWT_TOKEN}"
-                },
-                json={
-                    "CustomerName": req.user_name,
-                    "CurrencyCode": "INR",
-                    "CountryCode": req.country_code,
-                    "MobileNo": req.user_phone,
-                    "EmailAddress": req.user_email
-                }
-            )
-            print(f"AstroVed API: {response.status_code} | {response.text}")
-            
-            # Also save to local DB as backup
-            try:
-                save_user_registration(req.session_id, req.user_name, req.user_email, req.user_phone, req.country_code, 1)
-            except Exception as db_err:
-                print(f"Local DB backup error: {db_err}")
-            
-            return response.json()
-            
-    except httpx.TimeoutException:
-        print("AstroVed API timeout")
-        return {"StatusCode": 200, "Status": "OK", "Message": "Saved with timeout fallback"}
-    except httpx.ConnectError as ce:
-        print(f"AstroVed API connection error: {ce}")
-        return {"StatusCode": 200, "Status": "OK", "Message": "Saved with connection fallback"}
-    except Exception as e:
-        print(f"register_user unexpected error: {str(e)}")
-        return {"StatusCode": 200, "Status": "OK", "Message": "Saved with error fallback"}
+# /user/register is handled by chat_router (app/routes/chat.py)
 
 # Check what is loaded
 @app.get("/debug/env")
