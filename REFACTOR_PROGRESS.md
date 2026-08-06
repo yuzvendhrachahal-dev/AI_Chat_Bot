@@ -366,3 +366,42 @@ This refactor is intentionally incremental.
 Each step must preserve existing functionality.
 
 The chatbot, agent dashboard, Render deployment, and APIs must continue working after every completed step.
+
+## ✅ Step 9 – Agent Service Extraction
+
+Status: Completed
+
+Objective:
+Extract the complete Human Agent workflow from `main.py` into a dedicated service layer.
+
+Changes:
+- Created `app/services/agent_service.py`
+- Moved agent authentication logic
+- Moved active session retrieval
+- Moved session history retrieval
+- Moved claim session logic
+- Moved reply processing
+- Moved close session logic
+- Moved dashboard helper functions
+- Updated imports in `main.py`
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes
+
+Commit:
+refactor(agent): extract agent service
+
+Notes:
+The complete Human Agent workflow has been isolated into a reusable service while preserving identical functionality.
