@@ -263,11 +263,47 @@ Pending
 Notes:
 The CRM handoff workflow is now isolated into a dedicated service while preserving identical behaviour for chatbot-to-agent transitions.
 
+### ✅ Step 8 – Chat Service Extraction
+
+Status: Completed
+
+Objective:
+Extract the complete chatbot business logic from `main.py` into a dedicated chat service.
+
+Changes:
+- Created `app/services/chat_service.py`
+- Moved chatbot request processing
+- Moved conversation history preparation
+- Moved prompt assembly
+- Moved LLM request logic
+- Moved response processing
+- Updated `main.py` to delegate processing through `process_chat()`
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes (successfully verified via Python import checks)
+
+Commit:
+Pending
+
+Notes:
+The `/chat` endpoint is now a thin controller that delegates business logic to `chat_service.py`, significantly reducing complexity in `main.py` while preserving existing behaviour.
+
 ---
 
 ## Upcoming Steps
 
-- Step 8 – Extract Chat Service
 - Step 9 – Extract Agent Service
 - Step 10 – Extract API Routes
 - Step 11 – Move HTML Templates

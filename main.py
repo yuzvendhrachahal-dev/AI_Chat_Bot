@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
-from groq import Groq
+from app.services.chat_service import process_chat
 import os, asyncio, httpx, re, secrets, unicodedata
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -21,10 +21,8 @@ from app.database.database import (
     get_all_sessions, get_waiting_or_active_sessions, save_user_registration,
     get_all_registrations, hash_password
 )
-from app.prompts.prompts import BASE_SYSTEM_PROMPT, TOPIC_FORCE_INSTRUCTION, LANGUAGE_INSTRUCTIONS
-from app.services.kb_service import load_knowledge_base, reload_knowledge_base, search_knowledge, search_knowledge_for_url, KB_CHUNKS
-from app.services.language_service import detect_language
-from app.services.handoff_service import needs_handoff, create_or_update_handoff
+from app.services.kb_service import KB_CHUNKS
+from app.services.handoff_service import create_or_update_handoff
 
 
 
@@ -60,7 +58,7 @@ async def lifespan(app):
     yield
 
 app = FastAPI(lifespan=lifespan)
-client = Groq(api_key=GROQ_API_KEY)
+
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 
@@ -137,69 +135,7 @@ async def admin_users():
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    try:
-        status = get_and_update_session_status(req.session_id)
-        if status == "with_agent":
-            save_message(req.session_id, "user", req.message)
-            return {"reply": None, "mode": "with_agent"}
-        history = get_history(req.session_id)
-        save_message(req.session_id, "user", req.message)
-        if needs_handoff(req.message):
-            create_or_update_handoff(req.session_id, req.user_name, req.user_email, req.user_phone, "general", "normal")
-            reply = "I understand this needs special attention. Connecting you with our specialist team now — they'll be with you shortly! 🎧"
-            save_message(req.session_id, "assistant", reply)
-            return {"reply": reply, "mode": "handoff_triggered", "topic_url": None, "topic_label": None}
-        
-        detected_lang = detect_language(req.message)
-        topic_url, topic_label = match_topic(req.message)
-        topic_info = None
-        if topic_label:
-            for _k, _v in TOPIC_MAP.items():
-                if _v["label"] == topic_label:
-                    topic_info = _v
-                    break
-
-        system_content = BASE_SYSTEM_PROMPT + LANGUAGE_INSTRUCTIONS.get(detected_lang, LANGUAGE_INSTRUCTIONS["english"])
-
-        if topic_info:
-            url_fragment = topic_info["url"].replace(SITE, "").strip("/").split("/")[0]
-            kb_content = search_knowledge_for_url(url_fragment) or search_knowledge(req.message, top_k=2)
-            if not kb_content:
-                kb_content = f"[Page: {topic_info['label']}]\nURL: {topic_info['url']}\n{topic_info.get('fallback','')}\n"
-            system_content += TOPIC_FORCE_INSTRUCTION.format(label=topic_info["label"], content=kb_content)
-        else:
-            relevant_content, kb_matches = search_knowledge(req.message, top_k=3)
-            if relevant_content:
-                system_content += f"\n\n=== RELEVANT WEBSITE CONTENT ===\n{relevant_content}\n=== END CONTENT ==="
-            if not topic_url and kb_matches:
-                topic_url = kb_matches[0]["url"]
-                topic_label = kb_matches[0]["title"]
-
-        # ↓ this line must sit at the SAME indent level as the if/else above (8 spaces),
-        # not nested inside either branch — that's almost certainly what went wrong.
-        messages = [{"role": "system", "content": system_content}]
-        for h in history:
-            if h["role"] in ("user", "assistant"):
-                messages.append({"role": h["role"], "content": str(h["content"])})
-        messages.append({"role": "user", "content": str(req.message)})
-
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=messages,
-            max_tokens=450,
-            temperature=0.45,
-            top_p=0.9,
-        )
-        
-        
-        
-        
-        reply = response.choices[0].message.content
-        save_message(req.session_id, "assistant", reply)
-        return {"reply": reply, "mode": "bot", "topic_url": topic_url, "topic_label": topic_label}
-    except Exception as e:
-        print(f"ERROR in /chat: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+    return await process_chat(req)
 
 @app.get("/poll/{session_id}")
 async def poll_session(session_id: str, since_id: int = 0):
