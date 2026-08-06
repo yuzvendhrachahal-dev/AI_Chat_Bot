@@ -50,11 +50,46 @@ Pending
 Commit:
 Pending
 
+### ✅ Step 2 – Configuration Extraction
+
+Status: Completed
+
+Objective:
+Extract all application configuration and constants from `main.py` into a dedicated configuration module.
+
+Changes:
+- Created `app/config/settings.py`
+- Moved environment variable loading (`load_dotenv()`)
+- Moved `GROQ_API_KEY`
+- Moved `SITE`
+- Moved `HANDOFF_KEYWORDS`
+- Updated `main.py` imports to use the centralized configuration module
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Pending
+
+Commit:
+Pending
+
+Notes:
+This refactor separates configuration from business logic, making environment management and future configuration updates easier while preserving existing functionality.
+
 ---
 
 ## Upcoming Steps
 
-- Step 2 – Extract configuration
 - Step 3 – Extract database layer
 - Step 4 – Extract prompt management
 - Step 5 – Extract knowledge base service

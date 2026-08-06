@@ -6,30 +6,14 @@ from groq import Groq
 import sqlite3, os, asyncio, httpx, re, secrets, hashlib, unicodedata
 from contextlib import asynccontextmanager
 from datetime import datetime
-from dotenv import load_dotenv
 from topic_map import TOPIC_MAP, match_topic
 from fastapi.responses import StreamingResponse
 import json as json_lib
 import asyncio
 import httpx
 import os
+from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_API_BASE, ASTROVED_JWT_TOKEN
 
-load_dotenv()
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY not found in .env file!")
-
-SITE = "https://www.astroved.com"
-
-# FIX: kept narrow + specific to real billing/escalation issues, mirrors the
-# widget's CRM_KW list so backend and frontend agree on what truly needs a human.
-HANDOFF_KEYWORDS = [
-    'refund', 'billing issue', 'invoice problem', 'payment failed', 'payment issue',
-    'cancel my subscription', 'complaint', 'talk to agent', 'talk to a human',
-    'speak to agent', 'speak to a human', 'human agent', 'call me back',
-    'account issue', 'order tracking', 'not working', 'broken', 'urgent help'
-]
 
 def needs_handoff(text: str) -> bool:
     return any(k in text.lower() for k in HANDOFF_KEYWORDS)
@@ -1118,9 +1102,6 @@ function drawDonut(stats,total){
 # Add at top
 # Add at top
 import httpx
-
-ASTROVED_API_BASE = "https://qawebservice.astroved.com/api"
-ASTROVED_JWT_TOKEN = os.getenv("ASTROVED_JWT_TOKEN", "")
 
 class RegisterRequest(BaseModel):
     session_id: str
