@@ -405,3 +405,42 @@ refactor(agent): extract agent service
 
 Notes:
 The complete Human Agent workflow has been isolated into a reusable service while preserving identical functionality.
+
+## ✅ Step 10 – API Route Modularization
+
+Status: Completed
+
+Objective:
+Separate FastAPI route definitions into dedicated router modules while preserving all existing API behavior.
+
+Changes:
+- Created `app/routes/chat.py`
+- Created `app/routes/agent.py`
+- Created `app/routes/admin.py`
+- Created `app/routes/widget.py`
+- Moved chatbot endpoints
+- Moved agent endpoints
+- Moved admin endpoints
+- Moved widget/static endpoints
+- Registered routers from `main.py` using `include_router()`
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes
+
+Commit:
+refactor(routes): modularize FastAPI routes
+
+Notes:
+Route definitions are now fully separated from business logic, making the application easier to maintain and extend while preserving existing endpoint behavior.
