@@ -158,9 +158,46 @@ This refactor isolates LLM instructions from application control logic and endpo
 
 ---
 
+### ✅ Step 5 – Knowledge Base Service Extraction
+
+Status: Completed
+
+Objective:
+Extract the knowledge base loading and semantic search functionality from `main.py` into a dedicated service.
+
+Changes:
+- Created `app/services/kb_service.py`
+- Moved knowledge base loading
+- Moved KB chunk initialization
+- Moved semantic search functions
+- Moved URL-specific search helpers
+- Updated imports in `main.py`
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes (successfully verified via Python import checks)
+
+Commit:
+Pending
+
+Notes:
+The knowledge base subsystem is now isolated into a reusable service without modifying search behaviour or chatbot responses.
+
+---
+
 ## Upcoming Steps
 
-- Step 5 – Extract Knowledge Base Service
 - Step 6 – Extract Language Detection Service
 - Step 7 – Extract Human Handoff Service
 - Step 8 – Extract Chat Service
