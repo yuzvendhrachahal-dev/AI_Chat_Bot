@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from groq import Groq
-import sqlite3, os, asyncio, httpx, re, secrets, hashlib, unicodedata
+import os, asyncio, httpx, re, secrets, unicodedata
 from contextlib import asynccontextmanager
 from datetime import datetime
 from topic_map import TOPIC_MAP, match_topic
@@ -13,6 +13,14 @@ import asyncio
 import httpx
 import os
 from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_API_BASE, ASTROVED_JWT_TOKEN
+from app.database.database import (
+    init_db, seed_default_agents, get_history, save_message, create_or_update_handoff,
+    create_or_update_session, get_admin_users, get_and_update_session_status,
+    get_session_poll_data, get_agent_by_username, get_active_agent_sessions,
+    get_session_messages, claim_session, touch_session, close_session,
+    get_all_sessions, get_waiting_or_active_sessions, save_user_registration,
+    get_all_registrations, hash_password
+)
 
 
 def needs_handoff(text: str) -> bool:
@@ -140,56 +148,6 @@ client = Groq(api_key=GROQ_API_KEY)
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 
-def init_db():
-    conn = sqlite3.connect("chat.db")
-    conn.execute("""CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, role TEXT,
-        content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS agent_sessions (
-        session_id TEXT PRIMARY KEY, user_name TEXT, user_email TEXT, user_phone TEXT,
-        status TEXT DEFAULT 'bot', assigned_agent TEXT, issue_type TEXT,
-        priority TEXT DEFAULT 'normal', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS agents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE,
-        password_hash TEXT, display_name TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-    conn.commit(); conn.close()
-
-def get_history(session_id: str):
-    try:
-        conn = sqlite3.connect("chat.db")
-        rows = conn.execute(
-            "SELECT role, content FROM messages WHERE session_id=? AND role IN ('user','assistant') ORDER BY created_at DESC LIMIT 20",
-            (session_id,)).fetchall()
-        conn.close()
-        history = []
-        for r, c in reversed(rows):
-            if r in ("user","assistant") and c and str(c).strip():
-                history.append({"role": r, "content": str(c).strip()})
-        return history
-    except Exception as e:
-        print(f"get_history error: {e}"); return []
-
-def save_message(session_id: str, role: str, content: str):
-    try:
-        conn = sqlite3.connect("chat.db")
-        conn.execute("INSERT INTO messages (session_id, role, content) VALUES (?,?,?)", (session_id, role, content))
-        conn.commit(); conn.close()
-    except Exception as e:
-        print(f"save_message error: {e}")
-
-def hash_password(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
-
-def seed_default_agents():
-    conn = sqlite3.connect("chat.db")
-    if conn.execute("SELECT COUNT(*) FROM agents").fetchone()[0] == 0:
-        for u, p, n in [("agent1","astroved123","Support Agent 1"),("agent2","astroved123","Support Agent 2")]:
-            conn.execute("INSERT INTO agents (username, password_hash, display_name) VALUES (?,?,?)", (u, hash_password(p), n))
-        conn.commit()
-        print("Seeded default agent accounts")
-    conn.close()
-
 init_db(); seed_default_agents()
 
 class ChatRequest(BaseModel):
@@ -220,11 +178,7 @@ async def agent_events():
         last_count = 0
         while True:
             try:
-                conn = sqlite3.connect("chat.db")
-                rows = conn.execute(
-                    "SELECT session_id, user_name, status, updated_at FROM agent_sessions WHERE status IN ('waiting','with_agent') ORDER BY updated_at DESC"
-                ).fetchall()
-                conn.close()
+                rows = get_waiting_or_active_sessions()
                 count = len(rows)
                 if count != last_count:
                     last_count = count
@@ -253,55 +207,23 @@ async def agent_events():
 @app.post("/session/start")
 async def session_start(req: SessionStartRequest):
     try:
-        conn = sqlite3.connect("chat.db")
-        if conn.execute("SELECT session_id FROM agent_sessions WHERE session_id=?", (req.session_id,)).fetchone():
-            conn.execute("UPDATE agent_sessions SET user_name=?, user_email=?, user_phone=?, updated_at=CURRENT_TIMESTAMP WHERE session_id=?",
-                (req.user_name, req.user_email, req.user_phone, req.session_id))
-        else:
-            conn.execute("INSERT INTO agent_sessions (session_id, user_name, user_email, user_phone, status) VALUES (?,?,?,?,'bot')",
-                (req.session_id, req.user_name, req.user_email, req.user_phone))
-        conn.commit(); conn.close()
+        create_or_update_session(req.session_id, req.user_name, req.user_email, req.user_phone)
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/admin/users")
 async def admin_users():
-    conn = sqlite3.connect("chat.db")
-    rows = conn.execute(
-        "SELECT session_id, user_name, user_email, user_phone, status, issue_type, created_at, updated_at FROM agent_sessions ORDER BY updated_at DESC"
-    ).fetchall()
-    conn.close()
+    rows = get_admin_users()
     return {"users": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"status":r[4],"issue_type":r[5],"created_at":r[6],"updated_at":r[7]} for r in rows]}
 
-def create_or_update_handoff(session_id, name, email, phone, issue_type, priority):
-    conn = sqlite3.connect("chat.db")
-    if conn.execute("SELECT session_id FROM agent_sessions WHERE session_id=?", (session_id,)).fetchone():
-        conn.execute("UPDATE agent_sessions SET status='waiting', issue_type=?, priority=?, updated_at=CURRENT_TIMESTAMP WHERE session_id=?",
-            (issue_type, priority, session_id))
-    else:
-        conn.execute("INSERT INTO agent_sessions (session_id, user_name, user_email, user_phone, status, issue_type, priority) VALUES (?,?,?,?,'waiting',?,?)",
-            (session_id, name, email, phone, issue_type, priority))
-    conn.commit(); conn.close()
+
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        conn = sqlite3.connect("chat.db")
-        row = conn.execute("SELECT status FROM agent_sessions WHERE session_id=?", (req.session_id,)).fetchone()
-        # FIX (CRM loop bug): once an agent closes a session, status stays
-        # 'closed' forever in the DB. Previously, the next user message would
-        # fall through normal /chat logic fine, BUT the session stayed marked
-        # 'closed' which made the dashboard keep treating it as a dead thread
-        # AND any stray needs_handoff() match would re-open with stale state.
-        # We now explicitly reset 'closed' -> 'bot' the moment the user sends
-        # a new message, so it behaves like a brand-new bot conversation.
-        if row and row[0] == "closed":
-            conn.execute("UPDATE agent_sessions SET status='bot', updated_at=CURRENT_TIMESTAMP WHERE session_id=?", (req.session_id,))
-            conn.commit()
-            row = ("bot",)
-        conn.close()
-        if row and row[0] == "with_agent":
+        status = get_and_update_session_status(req.session_id)
+        if status == "with_agent":
             save_message(req.session_id, "user", req.message)
             return {"reply": None, "mode": "with_agent"}
         history = get_history(req.session_id)
@@ -366,10 +288,7 @@ async def chat(req: ChatRequest):
 @app.get("/poll/{session_id}")
 async def poll_session(session_id: str, since_id: int = 0):
     try:
-        conn = sqlite3.connect("chat.db")
-        rows = conn.execute("SELECT id, role, content FROM messages WHERE session_id=? AND id > ? ORDER BY id ASC", (session_id, since_id)).fetchall()
-        status_row = conn.execute("SELECT status, assigned_agent FROM agent_sessions WHERE session_id=?", (session_id,)).fetchone()
-        conn.close()
+        rows, status_row = get_session_poll_data(session_id, since_id)
         return {"messages": [{"id":r[0],"role":r[1],"content":r[2]} for r in rows],
                 "status": status_row[0] if status_row else "bot",
                 "agent_name": status_row[1] if status_row else None}
@@ -388,9 +307,7 @@ async def handoff(req: HandoffRequest):
 @app.post("/agent/login")
 async def agent_login(req: AgentLoginRequest):
     try:
-        conn = sqlite3.connect("chat.db")
-        row = conn.execute("SELECT display_name, password_hash FROM agents WHERE username=?", (req.username,)).fetchone()
-        conn.close()
+        row = get_agent_by_username(req.username)
         if not row or row[1] != hash_password(req.password):
             raise HTTPException(status_code=401, detail="Invalid username or password")
         return {"status": "ok", "display_name": row[0], "username": req.username}
@@ -402,12 +319,7 @@ async def agent_login(req: AgentLoginRequest):
 @app.get("/agent/sessions")
 async def agent_sessions():
     try:
-        conn = sqlite3.connect("chat.db")
-        rows = conn.execute(
-            """SELECT session_id, user_name, user_email, user_phone, status, assigned_agent, issue_type, priority, updated_at
-               FROM agent_sessions WHERE status IN ('waiting','with_agent')
-               ORDER BY CASE priority WHEN 'urgent' THEN 0 ELSE 1 END, updated_at ASC""").fetchall()
-        conn.close()
+        rows = get_active_agent_sessions()
         return {"sessions": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"status":r[4],"assigned_agent":r[5],"issue_type":r[6],"priority":r[7],"updated_at":r[8]} for r in rows]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -415,9 +327,7 @@ async def agent_sessions():
 @app.get("/agent/history/{session_id}")
 async def agent_history(session_id: str):
     try:
-        conn = sqlite3.connect("chat.db")
-        rows = conn.execute("SELECT id, role, content, created_at FROM messages WHERE session_id=? ORDER BY id ASC", (session_id,)).fetchall()
-        conn.close()
+        rows = get_session_messages(session_id)
         return {"messages": [{"id":r[0],"role":r[1],"content":r[2],"time":r[3]} for r in rows]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -425,9 +335,7 @@ async def agent_history(session_id: str):
 @app.post("/agent/claim/{session_id}")
 async def agent_claim(session_id: str, agent_name: str):
     try:
-        conn = sqlite3.connect("chat.db")
-        conn.execute("UPDATE agent_sessions SET status='with_agent', assigned_agent=?, updated_at=CURRENT_TIMESTAMP WHERE session_id=?", (agent_name, session_id))
-        conn.commit(); conn.close()
+        claim_session(session_id, agent_name)
         save_message(session_id, "system", f"{agent_name} has joined the chat")
         return {"status": "claimed"}
     except Exception as e:
@@ -437,9 +345,7 @@ async def agent_claim(session_id: str, agent_name: str):
 async def agent_reply(req: AgentReplyRequest):
     try:
         save_message(req.session_id, "assistant", req.message)
-        conn = sqlite3.connect("chat.db")
-        conn.execute("UPDATE agent_sessions SET updated_at=CURRENT_TIMESTAMP WHERE session_id=?", (req.session_id,))
-        conn.commit(); conn.close()
+        touch_session(req.session_id)
         return {"status": "sent"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -447,15 +353,7 @@ async def agent_reply(req: AgentReplyRequest):
 @app.post("/agent/close")
 async def agent_close(req: CloseSessionRequest):
     try:
-        conn = sqlite3.connect("chat.db")
-        # Set status to 'closed' but KEEP all messages — never delete history.
-        # The /chat endpoint will flip this back to 'bot' the moment the user
-        # types their next message (see FIX comment above in /chat).
-        conn.execute(
-            "UPDATE agent_sessions SET status='closed', updated_at=CURRENT_TIMESTAMP WHERE session_id=?",
-            (req.session_id,)
-        )
-        conn.commit(); conn.close()
+        close_session(req.session_id)
         save_message(req.session_id, "system", "Agent has ended this conversation. Chat history preserved.")
         return {"status": "closed"}
     except Exception as e:
@@ -465,14 +363,7 @@ async def agent_close(req: CloseSessionRequest):
 async def agent_all_sessions():
     """Returns ALL sessions including closed ones for history view"""
     try:
-        conn = sqlite3.connect("chat.db")
-        rows = conn.execute(
-            """SELECT session_id, user_name, user_email, user_phone, status, 
-               assigned_agent, issue_type, priority, updated_at
-               FROM agent_sessions 
-               ORDER BY updated_at DESC LIMIT 100"""
-        ).fetchall()
-        conn.close()
+        rows = get_all_sessions()
         return {"sessions": [
             {"session_id":r[0],"user_name":r[1],"user_email":r[2],
              "user_phone":r[3],"status":r[4],"assigned_agent":r[5],
@@ -1118,24 +1009,7 @@ async def register_user(req: RegisterRequest):
     if not ASTROVED_JWT_TOKEN:
         print("WARNING: ASTROVED_JWT_TOKEN not set — saving to local DB only")
         try:
-            conn = sqlite3.connect("chat.db")
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS user_registrations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    session_id TEXT,
-                    user_name TEXT,
-                    user_email TEXT,
-                    user_phone TEXT,
-                    country_code TEXT,
-                    synced_to_api INTEGER DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )""")
-            conn.execute(
-                "INSERT INTO user_registrations (session_id, user_name, user_email, user_phone, country_code) VALUES (?,?,?,?,?)",
-                (req.session_id, req.user_name, req.user_email, req.user_phone, req.country_code)
-            )
-            conn.commit()
-            conn.close()
+            save_user_registration(req.session_id, req.user_name, req.user_email, req.user_phone, req.country_code)
         except Exception as db_err:
             print(f"DB save error: {db_err}")
         
@@ -1162,24 +1036,7 @@ async def register_user(req: RegisterRequest):
             
             # Also save to local DB as backup
             try:
-                conn = sqlite3.connect("chat.db")
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS user_registrations (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        session_id TEXT,
-                        user_name TEXT,
-                        user_email TEXT,
-                        user_phone TEXT,
-                        country_code TEXT,
-                        synced_to_api INTEGER DEFAULT 0,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )""")
-                conn.execute(
-                    "INSERT INTO user_registrations (session_id, user_name, user_email, user_phone, country_code, synced_to_api) VALUES (?,?,?,?,?,?)",
-                    (req.session_id, req.user_name, req.user_email, req.user_phone, req.country_code, 1)
-                )
-                conn.commit()
-                conn.close()
+                save_user_registration(req.session_id, req.user_name, req.user_email, req.user_phone, req.country_code, 1)
             except Exception as db_err:
                 print(f"Local DB backup error: {db_err}")
             
@@ -1208,11 +1065,7 @@ async def debug_env():
 async def get_registrations():
     """View all registered users"""
     try:
-        conn = sqlite3.connect("chat.db")
-        rows = conn.execute(
-            "SELECT id, session_id, user_name, user_email, user_phone, country_code, synced_to_api, created_at FROM user_registrations ORDER BY created_at DESC LIMIT 100"
-        ).fetchall()
-        conn.close()
+        rows = get_all_registrations()
         return {
             "total": len(rows),
             "users": [
