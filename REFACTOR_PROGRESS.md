@@ -121,17 +121,57 @@ Yes (successfully verified via Python import checks)
 Commit:
 Pending
 
+### ✅ Step 4 – Extract Prompt Management
+
+Status: Completed
+
+Objective:
+Extract prompt templates and configurations from `main.py` into a dedicated prompts module.
+
+Changes:
+- Created `app/prompts/prompts.py`
+- Moved `BASE_SYSTEM_PROMPT`
+- Moved `TOPIC_FORCE_INSTRUCTION`
+- Moved `LANGUAGE_INSTRUCTIONS`
+- Updated `main.py` imports to use the centralized prompts module
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes (successfully verified via Python import checks)
+
+Commit:
+Pending
+
+Notes:
+This refactor isolates LLM instructions from application control logic and endpoints, making it easier to modify prompt wording in the future without changing python code paths.
+
 ---
 
 ## Upcoming Steps
 
-- Step 4 – Extract prompt management
-- Step 5 – Extract knowledge base service
-- Step 6 – Extract chat service
-- Step 7 – Extract routes
-- Step 8 – Move HTML templates
-- Step 9 – Move JavaScript and static assets
-- Step 10 – Cleanup and documentation
+- Step 5 – Extract Knowledge Base Service
+- Step 6 – Extract Language Detection Service
+- Step 7 – Extract Human Handoff Service
+- Step 8 – Extract Chat Service
+- Step 9 – Extract Agent Service
+- Step 10 – Extract API Routes
+- Step 11 – Move HTML Templates
+- Step 12 – Move Static Assets (JS/CSS)
+- Step 13 – Scheduler Cleanup
+- Step 14 – Scraper Cleanup
+- Step 15 – Testing & Validation
+- Step 16 – Final Documentation
 
 ---
 
