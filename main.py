@@ -5,18 +5,18 @@ from pydantic import BaseModel
 from app.services.chat_service import process_chat
 from app.routes.chat import router as chat_router
 from app.routes.agent import router as agent_router
+from app.routes.admin import router as admin_router
 import os, asyncio, httpx, re, secrets, unicodedata
 from contextlib import asynccontextmanager
 from datetime import datetime
 from topic_map import TOPIC_MAP, match_topic
 from fastapi.responses import StreamingResponse, Response
 import json as json_lib
-from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_API_BASE, ASTROVED_JWT_TOKEN
+from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_API_BASE
 from app.database.database import (
     init_db, seed_default_agents, get_history, save_message,
-    get_admin_users, get_and_update_session_status,
+    get_and_update_session_status,
     get_waiting_or_active_sessions,
-    get_all_registrations
 )
 from app.services.kb_service import KB_CHUNKS
 from app.services.handoff_service import create_or_update_handoff
@@ -63,6 +63,7 @@ init_db(); seed_default_agents()
 
 app.include_router(chat_router)
 app.include_router(agent_router)
+app.include_router(admin_router)
 
 class HandoffRequest(BaseModel):
     session_id: str; user_name: str = ""; user_email: str = ""
@@ -77,23 +78,6 @@ async def handoff(req: HandoffRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/admin/users")
-async def admin_users():
-    rows = get_admin_users()
-    return {"users": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"status":r[4],"issue_type":r[5],"created_at":r[6],"updated_at":r[7]} for r in rows]}
-
-@app.get("/debug/env")
-async def debug_env():
-    return {
-        "groq_loaded": bool(GROQ_API_KEY),
-        "jwt_loaded": bool(ASTROVED_JWT_TOKEN),
-        "jwt_preview": ASTROVED_JWT_TOKEN[:15] + "..." if ASTROVED_JWT_TOKEN else "NOT SET - using local DB only"
-    }
-
-@app.get("/admin/registrations")
-async def get_registrations():
-    rows = get_all_registrations()
-    return {"registrations": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"country_code":r[4],"synced_to_api":r[5],"created_at":r[6]} for r in rows]}
 
 @app.get("/app")
 async def serve_chatbot():
