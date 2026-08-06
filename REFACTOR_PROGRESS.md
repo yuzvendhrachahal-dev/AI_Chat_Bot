@@ -302,9 +302,53 @@ The `/chat` endpoint is now a thin controller that delegates business logic to `
 
 ---
 
+### ✅ Step 9 – Agent Service Extraction
+
+Status: Completed
+
+Objective:
+Extract all Human Agent business logic from `main.py` into a dedicated service module.
+
+Changes:
+- Created `app/services/agent_service.py`
+- Moved: agent authentication (`process_agent_login`)
+- Moved: session polling helper (`process_poll_session`)
+- Moved: SSE event stream builder (`build_agent_events_response`)
+- Moved: active session retrieval (`process_agent_sessions`)
+- Moved: full session history view (`process_agent_all_sessions`)
+- Moved: per-session message history (`process_agent_history`)
+- Moved: claim session logic (`process_agent_claim`)
+- Moved: agent reply processing (`process_agent_reply`)
+- Moved: session close logic (`process_agent_close`)
+- Updated `main.py` imports — removed agent-specific DB imports now internal to agent_service
+- All route decorators remain in `main.py`; each route body is a single delegation call
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes (successfully verified via Python import checks — 690 KB chunks loaded)
+
+Commit:
+Pending
+
+Notes:
+All agent operations are now isolated in `app/services/agent_service.py`.
+`main.py` route handlers are thin one-liners that delegate to the service layer.
+
+---
+
 ## Upcoming Steps
 
-- Step 9 – Extract Agent Service
 - Step 10 – Extract API Routes
 - Step 11 – Move HTML Templates
 - Step 12 – Move Static Assets (JS/CSS)

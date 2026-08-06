@@ -3,6 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from app.services.chat_service import process_chat
+from app.services.agent_service import (
+    process_poll_session,
+    build_agent_events_response,
+    process_agent_login,
+    process_agent_sessions,
+    process_agent_all_sessions,
+    process_agent_history,
+    process_agent_claim,
+    process_agent_reply,
+    process_agent_close,
+)
 import os, asyncio, httpx, re, secrets, unicodedata
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -16,10 +27,8 @@ from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_A
 from app.database.database import (
     init_db, seed_default_agents, get_history, save_message,
     create_or_update_session, get_admin_users, get_and_update_session_status,
-    get_session_poll_data, get_agent_by_username, get_active_agent_sessions,
-    get_session_messages, claim_session, touch_session, close_session,
-    get_all_sessions, get_waiting_or_active_sessions, save_user_registration,
-    get_all_registrations, hash_password
+    get_session_poll_data, get_waiting_or_active_sessions, save_user_registration,
+    get_all_registrations
 )
 from app.services.kb_service import KB_CHUNKS
 from app.services.handoff_service import create_or_update_handoff
@@ -84,39 +93,10 @@ class SessionStartRequest(BaseModel):
     session_id: str; user_name: str = ""; user_email: str = ""; user_phone: str = ""
     
 
-# Add this new endpoint
 @app.get("/agent/events")
 async def agent_events():
     """SSE stream for dashboard — pushes new session alerts"""
-    async def event_stream():
-        last_count = 0
-        while True:
-            try:
-                rows = get_waiting_or_active_sessions()
-                count = len(rows)
-                if count != last_count:
-                    last_count = count
-                    data = json_lib.dumps({
-                        "type": "queue_update",
-                        "count": count,
-                        "sessions": [{"session_id":r[0],"user_name":r[1],"status":r[2],"updated_at":r[3]} for r in rows]
-                    })
-                    yield f"data: {data}\n\n"
-                else:
-                    yield f"data: {{\"type\":\"ping\"}}\n\n"
-            except Exception as e:
-                yield f"data: {{\"type\":\"error\",\"msg\":\"{str(e)}\"}}\n\n"
-            await asyncio.sleep(3)
-    
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-            "Connection": "keep-alive",
-        }
-    )
+    return build_agent_events_response()
 
 @app.post("/session/start")
 async def session_start(req: SessionStartRequest):
@@ -140,10 +120,7 @@ async def chat(req: ChatRequest):
 @app.get("/poll/{session_id}")
 async def poll_session(session_id: str, since_id: int = 0):
     try:
-        rows, status_row = get_session_poll_data(session_id, since_id)
-        return {"messages": [{"id":r[0],"role":r[1],"content":r[2]} for r in rows],
-                "status": status_row[0] if status_row else "bot",
-                "agent_name": status_row[1] if status_row else None}
+        return process_poll_session(session_id, since_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -159,10 +136,7 @@ async def handoff(req: HandoffRequest):
 @app.post("/agent/login")
 async def agent_login(req: AgentLoginRequest):
     try:
-        row = get_agent_by_username(req.username)
-        if not row or row[1] != hash_password(req.password):
-            raise HTTPException(status_code=401, detail="Invalid username or password")
-        return {"status": "ok", "display_name": row[0], "username": req.username}
+        return process_agent_login(req.username, req.password)
     except HTTPException:
         raise
     except Exception as e:
@@ -171,43 +145,35 @@ async def agent_login(req: AgentLoginRequest):
 @app.get("/agent/sessions")
 async def agent_sessions():
     try:
-        rows = get_active_agent_sessions()
-        return {"sessions": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"status":r[4],"assigned_agent":r[5],"issue_type":r[6],"priority":r[7],"updated_at":r[8]} for r in rows]}
+        return process_agent_sessions()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/agent/history/{session_id}")
 async def agent_history(session_id: str):
     try:
-        rows = get_session_messages(session_id)
-        return {"messages": [{"id":r[0],"role":r[1],"content":r[2],"time":r[3]} for r in rows]}
+        return process_agent_history(session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/agent/claim/{session_id}")
 async def agent_claim(session_id: str, agent_name: str):
     try:
-        claim_session(session_id, agent_name)
-        save_message(session_id, "system", f"{agent_name} has joined the chat")
-        return {"status": "claimed"}
+        return process_agent_claim(session_id, agent_name)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/agent/reply")
 async def agent_reply(req: AgentReplyRequest):
     try:
-        save_message(req.session_id, "assistant", req.message)
-        touch_session(req.session_id)
-        return {"status": "sent"}
+        return process_agent_reply(req.session_id, req.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/agent/close")
 async def agent_close(req: CloseSessionRequest):
     try:
-        close_session(req.session_id)
-        save_message(req.session_id, "system", "Agent has ended this conversation. Chat history preserved.")
-        return {"status": "closed"}
+        return process_agent_close(req.session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -215,13 +181,7 @@ async def agent_close(req: CloseSessionRequest):
 async def agent_all_sessions():
     """Returns ALL sessions including closed ones for history view"""
     try:
-        rows = get_all_sessions()
-        return {"sessions": [
-            {"session_id":r[0],"user_name":r[1],"user_email":r[2],
-             "user_phone":r[3],"status":r[4],"assigned_agent":r[5],
-             "issue_type":r[6],"priority":r[7],"updated_at":r[8]} 
-            for r in rows
-        ]}
+        return process_agent_all_sessions()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
