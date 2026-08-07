@@ -32,7 +32,7 @@ def root():
 
 @router.get("/app")
 async def serve_chatbot():
-    return FileResponse("index.html")
+    return FileResponse("templates/index.html")
 
 
 @router.get("/widget.js")

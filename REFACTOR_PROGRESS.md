@@ -444,3 +444,38 @@ refactor(routes): modularize FastAPI routes
 
 Notes:
 Route definitions are now fully separated from business logic, making the application easier to maintain and extend while preserving existing endpoint behavior.
+
+---
+
+## ✅ Step 10 – Frontend Templates & Static Assets
+
+Status:
+Completed
+
+Objective:
+Move frontend resources into the standard FastAPI project structure.
+
+Changes:
+- Moved index.html → templates/
+- Moved widget_content.js → static/
+- Configured StaticFiles
+- Updated FileResponse/template paths
+- Updated widget serving route
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes
+
+Commit:
+Pending
