@@ -1,35 +1,20 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from app.services.chat_service import process_chat
+from fastapi.staticfiles import StaticFiles
+
 from app.routes.chat import router as chat_router
 from app.routes.agent import router as agent_router
 from app.routes.admin import router as admin_router
 from app.routes.widget import router as widget_router
-import asyncio, httpx
+
+import asyncio
+import httpx
 from contextlib import asynccontextmanager
-from app.config.settings import GROQ_API_KEY, SITE, HANDOFF_KEYWORDS, ASTROVED_API_BASE
-from app.database.database import init_db, seed_default_agents, save_message
-from app.services.handoff_service import create_or_update_handoff
 
-
-
-
-
-
-
-
-
-# FIX (accuracy): removed the "HANDOFF: say exact phrase" instruction from the
-# system prompt. The model was independently deciding to say the handoff
-# sentence for things like "connect with crm" / "team", which then collided
-# with the frontend's own CRM_KW trigger and produced duplicate "connect you
-# with our specialist team" messages back-to-back. Handoff is now controlled
-# ONLY by needs_handoff() in code (single source of truth, both code paths
-# now use the same narrow keyword list).
-
+from app.database.database import init_db, seed_default_agents
 
 async def keep_alive():
+    """Background task to keep the Render deployment awake."""
     await asyncio.sleep(10)
     while True:
         try:
@@ -41,31 +26,40 @@ async def keep_alive():
         await asyncio.sleep(600)
 
 @asynccontextmanager
-async def lifespan(app):
+async def lifespan(app: FastAPI):
+    # Start the keep-alive task on startup
     asyncio.create_task(keep_alive())
     yield
 
-app = FastAPI(lifespan=lifespan)
+# Initialize FastAPI Application
+app = FastAPI(
+    title="AstroVed Chatbot API",
+    description="Backend services for AstroVed AI Chatbot and Agent Dashboard",
+    lifespan=lifespan
+)
 
+# Configure CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+# Initialize Database and Seed Default Agents
+init_db()
+seed_default_agents()
 
-init_db(); seed_default_agents()
+# Mount Static Files Directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Register All Route Modules
 app.include_router(chat_router)
 app.include_router(agent_router)
 app.include_router(admin_router)
 app.include_router(widget_router)
 
-class HandoffRequest(BaseModel):
-    session_id: str; user_name: str = ""; user_email: str = ""
-    user_phone: str = ""; issue_type: str = "general"; priority: str = "normal"
-
-@app.post("/handoff")
-async def handoff(req: HandoffRequest):
-    try:
-        create_or_update_handoff(req.session_id, req.user_name, req.user_email, req.user_phone, req.issue_type, req.priority)
-        save_message(req.session_id, "system", f"Handoff requested: {req.issue_type} (priority: {req.priority})")
-        return {"status": "queued"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -18,7 +18,9 @@ from app.services.agent_service import process_poll_session
 from app.database.database import (
     create_or_update_session,
     save_user_registration,
+    save_message,
 )
+from app.services.handoff_service import create_or_update_handoff
 
 router = APIRouter()
 
@@ -37,6 +39,10 @@ class RegisterRequest(BaseModel):
     user_email: str = ""
     user_phone: str = ""
     country_code: str = "+91"
+
+class HandoffRequest(BaseModel):
+    session_id: str; user_name: str = ""; user_email: str = ""
+    user_phone: str = ""; issue_type: str = "general"; priority: str = "normal"
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -112,3 +118,13 @@ async def register_user(req: RegisterRequest):
     except Exception as e:
         print(f"register_user unexpected error: {str(e)}")
         return {"StatusCode": 200, "Status": "OK", "Message": "Saved with error fallback"}
+
+
+@router.post("/handoff")
+async def handoff(req: HandoffRequest):
+    try:
+        create_or_update_handoff(req.session_id, req.user_name, req.user_email, req.user_phone, req.issue_type, req.priority)
+        save_message(req.session_id, "system", f"Handoff requested: {req.issue_type} (priority: {req.priority})")
+        return {"status": "queued"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -37,6 +37,4 @@ async def serve_chatbot():
 
 @router.get("/widget.js")
 async def serve_widget():
-    with open("widget_content.js", "r", encoding="utf-8") as f:
-        content = f.read()
-    return Response(content=content, media_type="application/javascript")
+    return FileResponse("static/widget_content.js", media_type="application/javascript")

@@ -479,3 +479,40 @@ Yes
 
 Commit:
 Pending
+
+---
+
+## ✅ Step 11 – Main.py Cleanup
+
+Status:
+Completed
+
+Objective:
+Convert main.py into a lightweight application bootstrap.
+
+Changes:
+- Removed duplicated business logic
+- Imported services and routers
+- Centralized application startup
+- Registered routers
+- Simplified FastAPI initialization
+
+Business Logic Changed:
+No
+
+API Changes:
+No
+
+Database Changes:
+No
+
+UI Changes:
+No
+
+Application Tested:
+Yes
+
+Commit:
+Pending
+
+---
