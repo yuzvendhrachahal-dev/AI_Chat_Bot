@@ -497,6 +497,7 @@
 
   /* ── Bot Message ── */
   function botMsg(txt, opts, link) {
+    console.log("[FRONTEND RENDER]", txt);
     var m = $('av-msgs');
     var row = document.createElement('div');
     row.className = 'av-mrow av-bot';
@@ -526,6 +527,7 @@
 
   /* ── User Message ── */
   function userMsg(txt) {
+    console.log("[FRONTEND RENDER] user message", txt);
     var m = $('av-msgs');
     var row = document.createElement('div');
     row.className = 'av-mrow av-user';
@@ -679,6 +681,10 @@
         .then(function (r) { return r.json(); })
         .then(function (d) {
           d.messages.forEach(function (m) {
+            lastMsgId = Math.max(lastMsgId, m.id); // BUG FIX 02 — advance cursor before rendering
+            if (answeredIds[m.id]) return; // Skip already rendered messages
+            answeredIds[m.id] = true;
+            console.log("[FRONTEND RENDER]", m.id, m.content);
             $('av-send-btn').disabled = false;
             if (m.role === 'assistant') botMsg(m.content, [], null);
             else if (m.role === 'system') botMsg('🔔 ' + m.content, [], null);
@@ -694,7 +700,10 @@
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (d.messages && d.messages.length) {
-          d.messages.forEach(function (m) { lastMsgId = Math.max(lastMsgId, m.id); });
+          d.messages.forEach(function (m) {
+            lastMsgId = Math.max(lastMsgId, m.id);
+            answeredIds[m.id] = true; // Mark as rendered so polling doesn't duplicate
+          });
         }
         startPolling();
       }).catch(function () { startPolling(); });

@@ -1,3 +1,6 @@
+import uuid
+from datetime import datetime, timezone
+
 from groq import Groq
 from fastapi import HTTPException
 
@@ -12,6 +15,17 @@ from app.config.topic_map import TOPIC_MAP, match_topic
 client = Groq(api_key=GROQ_API_KEY)
 
 async def process_chat(req):
+    # ── TEMPORARY DIAGNOSTIC LOGGING (BUG FIX 01) ──────────────────────────────
+    _request_id = str(uuid.uuid4())
+    _timestamp  = datetime.now(timezone.utc).isoformat()
+    print(
+        f"[DIAG] /chat received | "
+        f"request_id={_request_id} | "
+        f"session_id={req.session_id!r} | "
+        f"timestamp={_timestamp} | "
+        f"message={req.message!r}"
+    )
+    # ── END DIAGNOSTIC LOGGING ──────────────────────────────────────────────────
     try:
         status = get_and_update_session_status(req.session_id)
         if status == "with_agent":

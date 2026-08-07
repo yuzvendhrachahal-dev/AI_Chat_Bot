@@ -73,10 +73,12 @@ def build_agent_events_response() -> StreamingResponse:
                             for r in rows
                         ],
                     })
+                    print(f"[SSE] Queue update sent: count={count}")
                     yield f"data: {data}\n\n"
                 else:
                     yield "data: {\"type\":\"ping\"}\n\n"
             except Exception as e:
+                print(f"[SSE ERROR] {e}")
                 yield f"data: {{\"type\":\"error\",\"msg\":\"{str(e)}\"}}\n\n"
             await asyncio.sleep(3)
 

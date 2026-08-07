@@ -55,7 +55,9 @@ async def chat(req: ChatRequest):
 @router.get("/poll/{session_id}")
 async def poll_session(session_id: str, since_id: int = 0):
     try:
-        return process_poll_session(session_id, since_id)
+        res = process_poll_session(session_id, since_id)
+        print(f"[POLL] session={session_id} since={since_id} messages_returned={len(res.get('messages', []))}")
+        return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -1727,6 +1727,8 @@
     var msgCounter = 0;
     var pollTimer = null;
     var lastMsgId = 0;
+    var isSending = false;  // BUG FIX 02 — prevents concurrent POST /chat
+    var answeredIds = {};   // BUG FIX 02 — tracking rendered message IDs
 
 
     /* Set logos immediately — works in all environments */
@@ -1876,6 +1878,7 @@
        BOT MESSAGE
     ───────────────────────────────────── */
     function botMsg(txt, opts, link) {
+      console.log("[FRONTEND RENDER]", txt);
       var m = document.getElementById('msgs');
       var row = document.createElement('div');
       row.className = 'mrow bot';
@@ -1907,6 +1910,7 @@
        USER MESSAGE
     ───────────────────────────────────── */
     function userMsg(txt, msgId) {
+      console.log("[FRONTEND RENDER] user message", txt);
       var m = document.getElementById('msgs');
       var row = document.createElement('div');
       row.className = 'mrow user';
@@ -1962,6 +1966,8 @@
        SEND MESSAGE
     ───────────────────────────────────── */
     function send() {
+      if (isSending) return;  // BUG FIX 02 — block concurrent sends
+
       var inp = document.getElementById('inp');
       var txt = inp.value.trim();
       if (!txt) return;
@@ -1975,6 +1981,8 @@
         setTimeout(showCRM, 800);
         return;
       }
+      isSending = true;  // BUG FIX 02 — lock before async call
+      document.getElementById('send-btn').disabled = true;
       showTyping();
       callAPI(txt, 0);
     }
@@ -2001,6 +2009,8 @@
             return r.json();
           })
           .then(function (d) {
+            isSending = false;  // BUG FIX 02 — unlock on success
+            document.getElementById('send-btn').disabled = false;
             rmTyping();
             if (d.mode === 'with_agent') { syncThenPoll(); return; }
             if (d.mode === 'handoff_triggered') {
@@ -2022,6 +2032,8 @@
               if (attempt < 2) {
                 setTimeout(function () { callAPI(txt, attempt + 1); }, 2000);
               } else {
+                isSending = false;  // BUG FIX 02 — unlock on final abort error
+                document.getElementById('send-btn').disabled = false;
                 rmTyping();
                 botMsg('Connection issue. Please try again! 🔄', [], null);
               }
@@ -2030,6 +2042,8 @@
             if (attempt < 2) {
               setTimeout(function () { callAPI(txt, attempt + 1); }, 2000);
             } else {
+              isSending = false;  // BUG FIX 02 — unlock on final network error
+              document.getElementById('send-btn').disabled = false;
               rmTyping();
               botMsg('Server is waking up… Please resend in 30 seconds! 🔄', [], null);
             }
@@ -2051,6 +2065,9 @@
           .then(function (d) {
             d.messages.forEach(function (m) {
               lastMsgId = Math.max(lastMsgId, m.id);
+              if (answeredIds[m.id]) return; // Skip already rendered messages
+              answeredIds[m.id] = true;
+              console.log("[FRONTEND RENDER]", m.id, m.content);
               if (m.role === 'assistant') {
                 botMsg(m.content, [], null);
               } else if (m.role === 'system') {
@@ -2155,7 +2172,10 @@
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (d.messages && d.messages.length) {
-            d.messages.forEach(function (m) { lastMsgId = Math.max(lastMsgId, m.id); });
+            d.messages.forEach(function (m) {
+              lastMsgId = Math.max(lastMsgId, m.id);
+              answeredIds[m.id] = true; // Mark as rendered so polling doesn't duplicate
+            });
           }
           startPolling();
         })

@@ -626,7 +626,7 @@ function closeSess(){
     toast('Session closed — user returned to AI bot');loadSessions();
   });
 }
-function sendReply(){const inp=document.getElementById('ri'),msg=inp.value.trim();if(!msg||!activeSid)return;inp.value='';fetch(API+'/agent/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid,agent_name:agent,message:msg})}).then(()=>{playReplySound();toast('✉️ Reply sent',1800);loadHistory();});}
+function sendReply(){const inp=document.getElementById('ri'),msg=inp.value.trim();if(!msg||!activeSid)return;console.log("[AGENT SEND]", activeSid, msg);inp.value='';fetch(API+'/agent/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid,agent_name:agent,message:msg})}).then(()=>{playReplySound();toast('✉️ Reply sent',1800);loadHistory();});}
 function useQR(btn){document.getElementById('ri').value=btn.textContent.trim();document.getElementById('ri').focus();}
 
 /* Analytics */
