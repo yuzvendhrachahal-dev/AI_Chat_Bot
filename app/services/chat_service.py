@@ -2,12 +2,12 @@ from groq import Groq
 from fastapi import HTTPException
 
 from app.config.settings import GROQ_API_KEY, SITE
-from app.database.database import get_and_update_session_status, save_message, get_history
-from app.services.handoff_service import create_or_update_handoff, needs_handoff
+from app.database.database import get_and_update_session_status, save_message, get_history, create_or_update_handoff
+from app.services.handoff_service import needs_handoff
 from app.services.language_service import detect_language
 from app.prompts.prompts import BASE_SYSTEM_PROMPT, TOPIC_FORCE_INSTRUCTION, LANGUAGE_INSTRUCTIONS
 from app.services.kb_service import search_knowledge, search_knowledge_for_url
-from topic_map import TOPIC_MAP, match_topic
+from app.config.topic_map import TOPIC_MAP, match_topic
 
 client = Groq(api_key=GROQ_API_KEY)
 

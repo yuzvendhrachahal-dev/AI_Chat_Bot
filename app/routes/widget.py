@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, Response
 
 from app.services.kb_service import KB_CHUNKS
 from app.config.settings import GROQ_API_KEY
-from topic_map import TOPIC_MAP
+from app.config.topic_map import TOPIC_MAP
 
 router = APIRouter()
 

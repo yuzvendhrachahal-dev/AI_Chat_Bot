@@ -19,8 +19,8 @@ from app.database.database import (
     create_or_update_session,
     save_user_registration,
     save_message,
+    create_or_update_handoff,
 )
-from app.services.handoff_service import create_or_update_handoff
 
 router = APIRouter()
 
