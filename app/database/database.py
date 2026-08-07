@@ -51,7 +51,6 @@ def get_history(session_id: str):
         return []
 
 def save_message(session_id: str, role: str, content: str):
-    print(f"[DB SAVE] {session_id} {role} {content[:40]}")
     try:
         conn = get_db_connection()
         conn.execute("INSERT INTO messages (session_id, role, content) VALUES (?,?,?)", (session_id, role, content))

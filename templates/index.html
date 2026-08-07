@@ -1729,6 +1729,8 @@
     var lastMsgId = 0;
     var isSending = false;  // BUG FIX 02 — prevents concurrent POST /chat
     var answeredIds = {};   // BUG FIX 02 — tracking rendered message IDs
+    var syncInProgress = false; // BUG FIX 06 — prevents concurrent syncThenPoll fetches
+    var handoffTriggered = false; // BUG FIX 07 — prevents repeated handoff cards
 
 
     /* Set logos immediately — works in all environments */
@@ -1878,7 +1880,6 @@
        BOT MESSAGE
     ───────────────────────────────────── */
     function botMsg(txt, opts, link) {
-      console.log("[FRONTEND RENDER]", txt);
       var m = document.getElementById('msgs');
       var row = document.createElement('div');
       row.className = 'mrow bot';
@@ -1910,7 +1911,6 @@
        USER MESSAGE
     ───────────────────────────────────── */
     function userMsg(txt, msgId) {
-      console.log("[FRONTEND RENDER] user message", txt);
       var m = document.getElementById('msgs');
       var row = document.createElement('div');
       row.className = 'mrow user';
@@ -1976,7 +1976,7 @@
       msgCounter++;
       userMsg(txt, 'm' + msgCounter);
 
-      if (CRM_KW.some(function (k) { return txt.toLowerCase().includes(k); })) {
+      if (!handoffTriggered && CRM_KW.some(function (k) { return txt.toLowerCase().includes(k); })) {
         botMsg('Let me connect you with our specialist team right away!', [], null);
         setTimeout(showCRM, 800);
         return;
@@ -2012,8 +2012,9 @@
             isSending = false;  // BUG FIX 02 — unlock on success
             document.getElementById('send-btn').disabled = false;
             rmTyping();
-            if (d.mode === 'with_agent') { syncThenPoll(); return; }
+            if (d.mode === 'with_agent') { handoffTriggered = true; syncThenPoll(); return; }
             if (d.mode === 'handoff_triggered') {
+              handoffTriggered = true;
               botMsg(d.reply, [], null);
               syncThenPoll();
               return;
@@ -2067,7 +2068,6 @@
               lastMsgId = Math.max(lastMsgId, m.id);
               if (answeredIds[m.id]) return; // Skip already rendered messages
               answeredIds[m.id] = true;
-              console.log("[FRONTEND RENDER]", m.id, m.content);
               if (m.role === 'assistant') {
                 botMsg(m.content, [], null);
               } else if (m.role === 'system') {
@@ -2147,6 +2147,9 @@
       uPhone = '';
       msgCounter = 0;
       lastMsgId = 0;
+      answeredIds = {};
+      syncInProgress = false;
+      handoffTriggered = false;
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 
       document.getElementById('ended').classList.remove('show');
@@ -2167,6 +2170,8 @@
     ───────────────────────────────────── */
     function syncThenPoll() {
       if (pollTimer) return; // already polling
+      if (syncInProgress) return; // fetch in progress
+      syncInProgress = true;
       // Silently fetch current max message ID — don't display anything
       fetch(API + '/poll/' + sessId + '?since_id=' + lastMsgId)
         .then(function (r) { return r.json(); })
@@ -2179,10 +2184,12 @@
           }
           startPolling();
         })
-        .catch(function () { startPolling(); });
+        .catch(function () { startPolling(); })
+        .finally(function () { syncInProgress = false; });
     }
 
     function showCRM() {
+      handoffTriggered = true;
       // FIX: use getElementById — no jQuery on this page
       var m = document.getElementById('msgs');
       if (!m) return;

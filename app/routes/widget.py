@@ -8,7 +8,7 @@ Handles routes for:
 """
 
 from fastapi import APIRouter
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse
 
 from app.services.kb_service import KB_CHUNKS
 from app.config.settings import GROQ_API_KEY

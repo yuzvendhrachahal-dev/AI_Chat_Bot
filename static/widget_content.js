@@ -456,6 +456,8 @@
   // ADD this line right after:
   var isSending = false;
   var answeredIds = {};
+  var syncInProgress = false; // BUG FIX 06 — prevents concurrent syncThenPoll fetches
+  var handoffTriggered = false; // BUG FIX 07 — prevents repeated handoff cards
 
   /* ── Helpers ── */
   function $(id) { return document.getElementById(id); }
@@ -497,7 +499,6 @@
 
   /* ── Bot Message ── */
   function botMsg(txt, opts, link) {
-    console.log("[FRONTEND RENDER]", txt);
     var m = $('av-msgs');
     var row = document.createElement('div');
     row.className = 'av-mrow av-bot';
@@ -527,7 +528,6 @@
 
   /* ── User Message ── */
   function userMsg(txt) {
-    console.log("[FRONTEND RENDER] user message", txt);
     var m = $('av-msgs');
     var row = document.createElement('div');
     row.className = 'av-mrow av-user';
@@ -630,7 +630,7 @@
     var reqId = msgCounter;
     userMsg(txt);
 
-    if (CRM_KW.some(function (k) { return txt.toLowerCase().includes(k); })) {
+    if (!handoffTriggered && CRM_KW.some(function (k) { return txt.toLowerCase().includes(k); })) {
       botMsg('Let me connect you with our specialist team right away!', [], null);
       setTimeout(showCRM, 800);
       return;
@@ -654,8 +654,8 @@
           isSending = false;                        // ← reset here
           $('av-send-btn').disabled = false;        // ← re-enable here
           rmTyping();
-          if (d.mode === 'with_agent') { syncThenPoll(); return; }
-          if (d.mode === 'handoff_triggered') { botMsg(d.reply, [], null); syncThenPoll(); return; }
+          if (d.mode === 'with_agent') { handoffTriggered = true; syncThenPoll(); return; }
+          if (d.mode === 'handoff_triggered') { handoffTriggered = true; botMsg(d.reply, [], null); syncThenPoll(); return; }
           var link = (d.topic_url && d.topic_label)
             ? { url: d.topic_url, label: d.topic_label }
             : getFallbackLink(txt);
@@ -684,7 +684,6 @@
             lastMsgId = Math.max(lastMsgId, m.id); // BUG FIX 02 — advance cursor before rendering
             if (answeredIds[m.id]) return; // Skip already rendered messages
             answeredIds[m.id] = true;
-            console.log("[FRONTEND RENDER]", m.id, m.content);
             $('av-send-btn').disabled = false;
             if (m.role === 'assistant') botMsg(m.content, [], null);
             else if (m.role === 'system') botMsg('🔔 ' + m.content, [], null);
@@ -696,6 +695,8 @@
 
   function syncThenPoll() {
     if (pollTimer) return;
+    if (syncInProgress) return; // fetch in progress
+    syncInProgress = true;
     fetch(API + '/poll/' + sessId + '?since_id=' + lastMsgId)
       .then(function (r) { return r.json(); })
       .then(function (d) {
@@ -706,7 +707,9 @@
           });
         }
         startPolling();
-      }).catch(function () { startPolling(); });
+      })
+      .catch(function () { startPolling(); })
+      .finally(function () { syncInProgress = false; });
   }
 
   /* ── Opt Buttons ── */
@@ -720,6 +723,7 @@
 
   /* ── CRM Panel ── */
   function showCRM() {
+    handoffTriggered = true;
     var m = $('av-msgs');  // ← was document.getElementById('msgs') — WRONG ID
     var row = document.createElement('div');
     row.className = 'av-mrow av-bot';
@@ -782,6 +786,9 @@
     sessId = 'av_' + Math.random().toString(36).slice(2);
     uName = ''; uEmail = ''; uPhone = '';
     msgCounter = 0; lastMsgId = 0;
+    answeredIds = {};
+    syncInProgress = false;
+    handoffTriggered = false;
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     $('av-ended').classList.remove('av-show');
     $('av-cs').classList.remove('av-active');

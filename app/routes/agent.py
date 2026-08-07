@@ -524,7 +524,7 @@ function playNotifSound(){try{const c=new(window.AudioContext||window.webkitAudi
 function playReplySound(){try{const c=new(window.AudioContext||window.webkitAudioContext)();[{f:740,t:0},{f:988,t:.14}].forEach(({f,t})=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0,c.currentTime+t);g.gain.linearRampToValueAtTime(.45,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+.26);o.start(c.currentTime+t);o.stop(c.currentTime+t+.3);});}catch(e){}}
 function showDesktopNotif(n){if(!('Notification'in window))return;if(Notification.permission==='granted'){new Notification('AstroVed Support',{body:n+' new user'+(n>1?'s':'')+' waiting!',tag:'av-queue'});}else if(Notification.permission!=='denied'){Notification.requestPermission().then(p=>{if(p==='granted')showDesktopNotif(n);});}}
 
-function connectSSE(){if(sseConn)sseConn.close();sseConn=new EventSource(API+'/agent/events');sseConn.onmessage=function(e){try{const d=JSON.parse(e.data);if(d.type==='queue_update'){if(d.count>lastQueueCount){playNotifSound();const df=d.count-lastQueueCount;toast('🔔 New chat: '+(d.sessions[0]?d.sessions[0].user_name||'Anonymous':'User'),4000);showDesktopNotif(df);}lastQueueCount=d.count;document.getElementById('qbadge').textContent=d.count;}}catch(err){};};sseConn.onerror=function(){setTimeout(connectSSE,5000);};}
+function connectSSE(){if(sseConn)sseConn.close();sseConn=new EventSource(API+'/agent/events');sseConn.onmessage=function(e){try{const d=JSON.parse(e.data);if(d.type==='queue_update'){if(d.count>lastQueueCount){playNotifSound();const df=d.count-lastQueueCount;toast('🔔 New chat: '+(d.sessions[0]?d.sessions[0].user_name||'Anonymous':'User'),4000);showDesktopNotif(df);}lastQueueCount=d.count;document.getElementById('qbadge').textContent=d.count;}}catch(err){};};sseConn.onerror=function(){console.warn('SSE connection interrupted — browser reconnecting natively...');};}
 
 function toast(m,ms=2600){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),ms);}
 
@@ -545,12 +545,13 @@ function doLogout(){sessionStorage.clear();clearInterval(pollL);clearInterval(po
 
 /* Sessions */
 function loadSessions(){
-  fetch(API+'/agent/sessions').then(r=>r.json()).then(d=>{
-    const active=d.sessions||[];
+  fetch(API+'/agent/all-sessions').then(r=>r.json()).then(all=>{
+    allSessions=all.sessions||[];
+    const active=allSessions.filter(s=>s.status==='waiting'||s.status==='with_agent');
     document.getElementById('qbadge').textContent=active.length;
     document.getElementById('ss-w').textContent=active.filter(s=>s.status==='waiting').length;
     document.getElementById('ss-a').textContent=active.filter(s=>s.status==='with_agent').length;
-    fetch(API+'/agent/all-sessions').then(r=>r.json()).then(all=>{allSessions=all.sessions||[];renderCards();}).catch(()=>{allSessions=active;renderCards();});
+    renderCards();
   }).catch(()=>{});
 }
 function renderCards(){
@@ -626,7 +627,7 @@ function closeSess(){
     toast('Session closed — user returned to AI bot');loadSessions();
   });
 }
-function sendReply(){const inp=document.getElementById('ri'),msg=inp.value.trim();if(!msg||!activeSid)return;console.log("[AGENT SEND]", activeSid, msg);inp.value='';fetch(API+'/agent/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid,agent_name:agent,message:msg})}).then(()=>{playReplySound();toast('✉️ Reply sent',1800);loadHistory();});}
+function sendReply(){const inp=document.getElementById('ri'),msg=inp.value.trim();if(!msg||!activeSid)return;inp.value='';fetch(API+'/agent/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid,agent_name:agent,message:msg})}).then(()=>{playReplySound();toast('✉️ Reply sent',1800);loadHistory();});}
 function useQR(btn){document.getElementById('ri').value=btn.textContent.trim();document.getElementById('ri').focus();}
 
 /* Analytics */

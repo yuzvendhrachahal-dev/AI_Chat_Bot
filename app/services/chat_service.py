@@ -1,6 +1,3 @@
-import uuid
-from datetime import datetime, timezone
-
 from groq import Groq
 from fastapi import HTTPException
 
@@ -8,27 +5,16 @@ from app.config.settings import GROQ_API_KEY, SITE
 from app.database.database import get_and_update_session_status, save_message, get_history, create_or_update_handoff
 from app.services.handoff_service import needs_handoff
 from app.services.language_service import detect_language
-from app.prompts.prompts import BASE_SYSTEM_PROMPT, TOPIC_FORCE_INSTRUCTION, LANGUAGE_INSTRUCTIONS
+from app.prompts.prompts import BASE_SYSTEM_PROMPT, TOPIC_FORCE_INSTRUCTION, LANGUAGE_INSTRUCTIONS, OFF_DOMAIN_REPLY, OFF_DOMAIN_REPLY_TAMIL
 from app.services.kb_service import search_knowledge, search_knowledge_for_url
 from app.config.topic_map import TOPIC_MAP, match_topic
 
 client = Groq(api_key=GROQ_API_KEY)
 
 async def process_chat(req):
-    # ── TEMPORARY DIAGNOSTIC LOGGING (BUG FIX 01) ──────────────────────────────
-    _request_id = str(uuid.uuid4())
-    _timestamp  = datetime.now(timezone.utc).isoformat()
-    print(
-        f"[DIAG] /chat received | "
-        f"request_id={_request_id} | "
-        f"session_id={req.session_id!r} | "
-        f"timestamp={_timestamp} | "
-        f"message={req.message!r}"
-    )
-    # ── END DIAGNOSTIC LOGGING ──────────────────────────────────────────────────
     try:
         status = get_and_update_session_status(req.session_id)
-        if status == "with_agent":
+        if status in ("with_agent", "waiting"):
             save_message(req.session_id, "user", req.message)
             return {"reply": None, "mode": "with_agent"}
         history = get_history(req.session_id)
@@ -63,6 +49,16 @@ async def process_chat(req):
             if not topic_url and kb_matches:
                 topic_url = kb_matches[0]["url"]
                 topic_label = kb_matches[0]["title"]
+
+            # ── OFF-DOMAIN GUARD ─────────────────────────────────────────────────
+            # No topic match AND no knowledge-base content means the question is
+            # outside AstroVed's domain. Return a polite refusal without calling
+            # the LLM so it cannot hallucinate from world knowledge.
+            if not topic_label and not relevant_content:
+                off_domain = OFF_DOMAIN_REPLY_TAMIL if detected_lang == "tamil" else OFF_DOMAIN_REPLY
+                save_message(req.session_id, "assistant", off_domain)
+                return {"reply": off_domain, "mode": "bot", "topic_url": None, "topic_label": None}
+            # ── END OFF-DOMAIN GUARD ─────────────────────────────────────────────
 
         messages = [{"role": "system", "content": system_content}]
         for h in history:
