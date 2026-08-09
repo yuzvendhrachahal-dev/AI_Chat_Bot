@@ -518,6 +518,7 @@ document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
 const API=window.location.origin;
 let agent='',activeSid=null,activeData=null,pollH=null,pollL=null,curTab='all',showAna=false,rpCurTab='user';
 let allSessions=[],sseConn=null,lastQueueCount=0;
+let _lastCardsKey='',_lastHistoryKey='';
 
 /* Sound */
 function playNotifSound(){try{const c=new(window.AudioContext||window.webkitAudioContext)();[{f:523,t:0},{f:659,t:.12},{f:784,t:.24},{f:1046,t:.36}].forEach(({f,t})=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;o.type='triangle';g.gain.setValueAtTime(0,c.currentTime+t);g.gain.linearRampToValueAtTime(.42,c.currentTime+t+.025);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+.32);o.start(c.currentTime+t);o.stop(c.currentTime+t+.34);});}catch(e){}}
@@ -563,7 +564,11 @@ function renderCards(){
     return true;
   });
   const sl=document.getElementById('sl');
-  if(!list.length){sl.innerHTML='<div class="sb-empty"><div>⚡</div><p>No chats in this view</p></div>';return;}
+  if(!list.length){sl.innerHTML='<div class="sb-empty"><div>⚡</div><p>No chats in this view</p></div>';_lastCardsKey='__empty__';return;}
+  // BLINK FIX: build a snapshot key; only repaint if sessions changed or active selection changed
+  const key=list.map(s=>s.session_id+'|'+s.status+'|'+(s.assigned_agent||'')+'|'+(s.updated_at||'')+(s.session_id===activeSid?'*':'')).join(',');
+  if(key===_lastCardsKey)return;
+  _lastCardsKey=key;
   sl.innerHTML='';
   list.forEach(s=>{
     const div=document.createElement('div');
@@ -609,6 +614,10 @@ function loadHistory(){
   if(!activeSid)return;
   fetch(API+'/agent/history/'+activeSid).then(r=>r.json()).then(d=>{
     const body=document.getElementById('cb');if(!body)return;
+    // BLINK FIX: only repaint if message count or last message id changed
+    const histKey=(d.messages&&d.messages.length?d.messages.length+'|'+d.messages[d.messages.length-1].id:'0');
+    if(histKey===_lastHistoryKey){return;}
+    _lastHistoryKey=histKey;
     const atBot=body.scrollTop+body.clientHeight>=body.scrollHeight-40;
     body.innerHTML=d.messages.map(m=>{const t=m.time?new Date(m.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';return`<div class="msg ${m.role}"><div>${(m.content||'').replace(/</g,'&lt;')}</div>${m.role!=='system'?`<div class="msg-t">${t}</div>`:''}</div>`;}).join('');
     if(atBot)body.scrollTop=body.scrollHeight;

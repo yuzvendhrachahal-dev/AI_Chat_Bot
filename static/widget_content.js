@@ -449,7 +449,8 @@
   }, 1000);
 
   var uName = '', uEmail = '', uPhone = '';
-  var sessId = 'av_' + Math.random().toString(36).slice(2);
+  var sessId = '';
+  fetch(API + '/session/start').then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
   var listening = false, recog = null;
   var msgCounter = 0, pollTimer = null, lastMsgId = 0;
   // Around line: var msgCounter=0, pollTimer=null, lastMsgId=0;
@@ -464,6 +465,7 @@
 
   function cleanMd(t) {
     return (t || '')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/https?:\/\/[^\s)]+/g, '')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '$1')
@@ -783,7 +785,7 @@
 
   /* ── Restart ── */
   function restart() {
-    sessId = 'av_' + Math.random().toString(36).slice(2);
+    fetch(API + '/session/start').then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
     uName = ''; uEmail = ''; uPhone = '';
     msgCounter = 0; lastMsgId = 0;
     answeredIds = {};

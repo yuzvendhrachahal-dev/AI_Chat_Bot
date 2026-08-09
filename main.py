@@ -10,7 +10,11 @@ from app.routes.widget import router as widget_router
 import asyncio
 import httpx
 from contextlib import asynccontextmanager
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from app.config.rate_limit import limiter
 from app.database.database import init_db, seed_default_agents
 
 async def keep_alive():
@@ -46,6 +50,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# Configure Rate Limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Initialize Database and Seed Default Agents
 init_db()

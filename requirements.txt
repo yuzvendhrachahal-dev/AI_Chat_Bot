@@ -7,11 +7,4 @@ requests
 beautifulsoup4
 lxml
 apscheduler
-
-
-
-
-
-
-
-
+slowapi

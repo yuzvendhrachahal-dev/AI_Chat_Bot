@@ -9,8 +9,10 @@ Handles routes for:
 """
 
 import httpx
-from fastapi import APIRouter, HTTPException
+import uuid
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from app.config.rate_limit import limiter
 
 from app.config.settings import ASTROVED_API_BASE, ASTROVED_JWT_TOKEN
 from app.services.chat_service import process_chat
@@ -30,9 +32,6 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     session_id: str; message: str; user_name: str = ""; user_email: str = ""; user_phone: str = ""
 
-class SessionStartRequest(BaseModel):
-    session_id: str; user_name: str = ""; user_email: str = ""; user_phone: str = ""
-
 class RegisterRequest(BaseModel):
     session_id: str
     user_name: str = ""
@@ -48,7 +47,8 @@ class HandoffRequest(BaseModel):
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.post("/chat")
-async def chat(req: ChatRequest):
+@limiter.limit("20/minute")
+async def chat(request: Request, req: ChatRequest):
     return await process_chat(req)
 
 
@@ -61,17 +61,18 @@ async def poll_session(session_id: str, since_id: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/session/start")
-async def session_start(req: SessionStartRequest):
+@router.get("/session/start")
+@limiter.limit("10/minute")
+async def session_start(request: Request):
     try:
-        create_or_update_session(req.session_id, req.user_name, req.user_email, req.user_phone)
-        return {"status": "ok"}
+        return {"session_id": f"sess_{uuid.uuid4().hex}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/user/register")
-async def register_user(req: RegisterRequest):
+@limiter.limit("5/minute")
+async def register_user(request: Request, req: RegisterRequest):
     print(f"Register attempt: {req.user_name} | {req.user_email} | {req.user_phone}")
 
     # If no JWT token configured, still save to local DB and proceed
