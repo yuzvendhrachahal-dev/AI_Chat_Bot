@@ -23,7 +23,7 @@ async def keep_alive():
     while True:
         try:
             async with httpx.AsyncClient(timeout=10) as c:
-                r = await c.get("https://astroved-chatbot.onrender.com/")
+                r = await c.get("https://astroved-ai-chatbot.onrender.com/")
                 print(f"Keep-alive ping OK status={r.status_code}")
         except Exception as e:
             print(f"Keep-alive failed (ok): {e}")
