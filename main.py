@@ -15,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.config.rate_limit import limiter
+from app.config.settings import APP_URL
 from app.database.database import init_db, seed_default_agents
 
 async def keep_alive():
@@ -23,7 +24,7 @@ async def keep_alive():
     while True:
         try:
             async with httpx.AsyncClient(timeout=10) as c:
-                r = await c.get("https://astroved-ai-chatbot.onrender.com/")
+                r = await c.get(APP_URL)
                 print(f"Keep-alive ping OK status={r.status_code}")
         except Exception as e:
             print(f"Keep-alive failed (ok): {e}")
