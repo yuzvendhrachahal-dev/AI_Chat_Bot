@@ -49,7 +49,7 @@
 
     var uName = '', uEmail = '', uPhone = '';
     var sessId = '';
-    fetch(API + '/session/start').then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
+    fetch(API + '/api/session', {method: 'POST'}).then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
     var listening = false, recog = null;
     var msgCounter = 0, pollTimer = null, lastMsgId = 0;
     var isSending = false;
@@ -193,7 +193,7 @@
 
       proceedToChat(uName);
 
-      fetch(API + '/user/register', {
+      fetch(API + '/api/register', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessId, user_name: n, user_email: e, user_phone: p, country_code: cc })
       }).catch(function () { });
@@ -245,7 +245,7 @@
 
     function callAPI(txt, attempt, reqId) {
       setTimeout(function () {
-        fetch(API + '/chat', {
+        fetch(API + '/api/chat', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ session_id: sessId, message: txt })
         })
@@ -277,7 +277,7 @@
     function startPolling() {
       if (pollTimer) return;
       pollTimer = setInterval(function () {
-        fetch(API + '/poll/' + sessId + '?since_id=' + lastMsgId)
+        fetch(API + '/api/poll/' + sessId + '?since_id=' + lastMsgId)
           .then(function (r) { return r.json(); })
           .then(function (d) {
             d.messages.forEach(function (m) {
@@ -297,7 +297,7 @@
       if (pollTimer) return;
       if (syncInProgress) return; 
       syncInProgress = true;
-      fetch(API + '/poll/' + sessId + '?since_id=' + lastMsgId)
+      fetch(API + '/api/poll/' + sessId + '?since_id=' + lastMsgId)
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (d.messages && d.messages.length) {
@@ -339,7 +339,7 @@
       m.appendChild(row);
       scrl();
 
-      fetch(API + '/handoff', {
+      fetch(API + '/api/handoff', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: sessId,
@@ -381,7 +381,7 @@
 
     /* ── Restart ── */
     function restart() {
-      fetch(API + '/session/start').then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
+      fetch(API + '/api/session', {method: 'POST'}).then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
       uName = ''; uEmail = ''; uPhone = '';
       msgCounter = 0; lastMsgId = 0;
       answeredIds = {};

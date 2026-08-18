@@ -32,17 +32,25 @@ async def keep_alive():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"Groq Model Loaded: {GROQ_MODEL}")
     # Start the keep-alive task on startup
     asyncio.create_task(keep_alive())
     yield
 
+import os
+
 # Initialize FastAPI Application
-app = FastAPI(
-    title="AstroVed Chatbot API",
-    description="Backend services for AstroVed AI Chatbot and Agent Dashboard",
-    lifespan=lifespan
-)
+kwargs = {
+    "title": "AstroVed Chatbot API",
+    "description": "Backend services for AstroVed AI Chatbot and Agent Dashboard",
+    "lifespan": lifespan,
+}
+
+if os.getenv("ENV") == "production":
+    kwargs["docs_url"] = None
+    kwargs["redoc_url"] = None
+    kwargs["openapi_url"] = None
+
+app = FastAPI(**kwargs)
 
 # Configure CORS Middleware
 app.add_middleware(
@@ -65,10 +73,16 @@ seed_default_agents()
 # Mount Static Files Directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+from fastapi import Request, HTTPException, Depends
+
+async def verify_internal(request: Request):
+    if request.client.host not in ["127.0.0.1", "localhost", "::1"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
 # Register All Route Modules
 app.include_router(chat_router)
-app.include_router(agent_router)
-app.include_router(admin_router)
+app.include_router(agent_router, include_in_schema=False)
+app.include_router(admin_router, include_in_schema=False, dependencies=[Depends(verify_internal)])
 app.include_router(widget_router)
 
 if __name__ == "__main__":

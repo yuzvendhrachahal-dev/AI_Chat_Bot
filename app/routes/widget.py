@@ -22,15 +22,21 @@ router = APIRouter()
 @router.get("/")
 def root():
     return {
-        "status": "AstroVed.AI is online",
+        "service": "AstroVed AI Chatbot",
+        "status": "running"
+    }
+
+@router.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "database": "connected",
         "model": GROQ_MODEL,
-        "api_key_loaded": bool(GROQ_API_KEY),
-        "knowledge_chunks_loaded": len(KB_CHUNKS),
-        "topics_loaded": len(TOPIC_MAP),
+        "version": "1.0.0"
     }
 
 
-@router.get("/app")
+@router.get("/app", include_in_schema=False)
 async def serve_chatbot():
     return FileResponse("templates/index.html")
 
@@ -38,3 +44,4 @@ async def serve_chatbot():
 @router.get("/widget.js")
 async def serve_widget():
     return FileResponse("static/widget_content.js", media_type="application/javascript")
+

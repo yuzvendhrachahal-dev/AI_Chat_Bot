@@ -24,7 +24,7 @@ function playNotifSound(){try{const c=new(window.AudioContext||window.webkitAudi
 function playReplySound(){try{const c=new(window.AudioContext||window.webkitAudioContext)();[{f:740,t:0},{f:988,t:.14}].forEach(({f,t})=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0,c.currentTime+t);g.gain.linearRampToValueAtTime(.45,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+.26);o.start(c.currentTime+t);o.stop(c.currentTime+t+.3);});}catch(e){}}
 function showDesktopNotif(n){if(!('Notification'in window))return;if(Notification.permission==='granted'){new Notification('AstroVed Support',{body:n+' new user'+(n>1?'s':'')+' waiting!',tag:'av-queue'});}else if(Notification.permission!=='denied'){Notification.requestPermission().then(p=>{if(p==='granted')showDesktopNotif(n);});}}
 
-function connectSSE(){if(sseConn)sseConn.close();sseConn=new EventSource(API+'/agent/events');sseConn.onmessage=function(e){try{const d=JSON.parse(e.data);if(d.type==='queue_update'){if(d.count>lastQueueCount){playNotifSound();const df=d.count-lastQueueCount;toast('🔔 New chat: '+(d.sessions[0]?d.sessions[0].user_name||'Anonymous':'User'),4000);showDesktopNotif(df);}lastQueueCount=d.count;document.getElementById('qbadge').textContent=d.count;}}catch(err){};};sseConn.onerror=function(){console.warn('SSE connection interrupted — browser reconnecting natively...');};}
+function connectSSE(){if(sseConn)sseConn.close();sseConn=new EventSource(API+'/support/events');sseConn.onmessage=function(e){try{const d=JSON.parse(e.data);if(d.type==='queue_update'){if(d.count>lastQueueCount){playNotifSound();const df=d.count-lastQueueCount;toast('🔔 New chat: '+(d.sessions[0]?d.sessions[0].user_name||'Anonymous':'User'),4000);showDesktopNotif(df);}lastQueueCount=d.count;document.getElementById('qbadge').textContent=d.count;}}catch(err){};};sseConn.onerror=function(){console.warn('SSE connection interrupted — browser reconnecting natively...');};}
 
 function toast(m,ms=2600){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),ms);}
 
@@ -33,7 +33,7 @@ function doLogin(){
   const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value.trim();
   if(!u||!p)return;
   const btn=document.querySelector('.lbtn');btn.textContent='Entering…';
-  fetch(API+'/agent/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+  fetch(API+'/support/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
     .then(r=>{if(!r.ok)throw new Error();return r.json();})
     .then(d=>{agent=d.display_name;sessionStorage.setItem('av_ag',agent);enterApp();})
     .catch(()=>{btn.textContent='Enter Console ✦';document.getElementById('le').style.display='block';});
@@ -45,7 +45,7 @@ function doLogout(){sessionStorage.clear();clearInterval(pollL);clearInterval(po
 
 /* Sessions */
 function loadSessions(){
-  fetch(API+'/agent/all-sessions').then(r=>r.json()).then(all=>{
+  fetch(API+'/support/all-sessions').then(r=>r.json()).then(all=>{
     allSessions=all.sessions||[];
     const active=allSessions.filter(s=>s.status==='waiting'||s.status==='with_agent');
     document.getElementById('qbadge').textContent=active.length;
@@ -74,7 +74,7 @@ function renderCards(){
     div.className='sc'+(s.session_id===activeSid?' active':'');
     div.onclick=()=>openSess(s);
     const ini=(s.user_name||'?').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
-    const t=s.updated_at?new Date(s.updated_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+    const t=s.updated_at?formatIST(s.updated_at):'';
     div.innerHTML=`<div class="sc-r1"><div class="sc-av">${ini}</div><span class="sc-name">${s.user_name||'Anonymous'}</span><span class="sc-badge ${s.status}">${s.status==='waiting'?'Waiting':s.assigned_agent||'Active'}</span></div><div class="sc-r2"><span class="sc-email">${s.user_email||s.session_id.slice(0,20)}</span><span class="sc-time">${t}</span></div><div class="sc-r3"><span class="sc-issue">Issue: <span>${s.issue_type||'general'}</span></span></div>`;
     sl.appendChild(div);
   });
@@ -103,30 +103,30 @@ function renderUserPanel(s){
   document.getElementById('rp-user').innerHTML=`<div class="ucard"><div class="uc-head"><div class="uc-av">${ini}</div><div><div class="uc-nm">${s.user_name||'Anonymous'}</div><div class="uc-em">${s.user_email||'—'}</div></div></div><div class="uc-field"><div class="uc-label">Phone</div><div class="uc-val ${s.user_phone?'':'muted'}">${s.user_phone||'Not provided'}</div></div><div class="uc-field"><div class="uc-label">Status</div><div class="uc-val"><span class="tb ${s.status}">${s.status}</span></div></div><div class="uc-field"><div class="uc-label">Issue Type</div><div class="uc-val">${s.issue_type||'general'}</div></div><div class="uc-field"><div class="uc-label">Priority</div><div class="uc-val">${s.priority||'normal'}</div></div><div class="uc-field"><div class="uc-label">Assigned Agent</div><div class="uc-val ${s.assigned_agent?'':'muted'}">${s.assigned_agent||'Unassigned'}</div></div><div class="uc-field"><div class="uc-label">Session ID</div><div class="uc-val">${s.session_id}</div></div></div>`;
 }
 function loadActivityPanel(sid){
-  fetch(API+'/agent/history/'+sid).then(r=>r.json()).then(d=>{
+  fetch(API+'/support/history/'+sid).then(r=>r.json()).then(d=>{
     const msgs=d.messages||[];
     const dc={user:'#00F5FF',assistant:'#8B5CF6',system:'#C9A84C'};
-    document.getElementById('rp-activity').innerHTML=msgs.length?msgs.slice(-12).reverse().map(m=>`<div class="aitem"><div class="adot" style="background:${dc[m.role]||'#999'};box-shadow:0 0 6px ${dc[m.role]||'#999'}"></div><div><div class="atext">${(m.content||'').slice(0,80)}${(m.content||'').length>80?'…':''}</div><div class="atime">${m.role} · ${m.time?new Date(m.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):''}</div></div></div>`).join(''):'<div class="a-empty">No messages yet</div>';
+    document.getElementById('rp-activity').innerHTML=msgs.length?msgs.slice(-12).reverse().map(m=>`<div class="aitem"><div class="adot" style="background:${dc[m.role]||'#999'};box-shadow:0 0 6px ${dc[m.role]||'#999'}"></div><div><div class="atext">${(m.content||'').slice(0,80)}${(m.content||'').length>80?'…':''}</div><div class="atime">${m.role} · ${m.time?formatIST(m.time):''}</div></div></div>`).join(''):'<div class="a-empty">No messages yet</div>';
   }).catch(()=>{});
 }
 function loadHistory(){
   if(!activeSid)return;
-  fetch(API+'/agent/history/'+activeSid).then(r=>r.json()).then(d=>{
+  fetch(API+'/support/history/'+activeSid).then(r=>r.json()).then(d=>{
     const body=document.getElementById('cb');if(!body)return;
     // BLINK FIX: only repaint if message count or last message id changed
     const histKey=(d.messages&&d.messages.length?d.messages.length+'|'+d.messages[d.messages.length-1].id:'0');
     if(histKey===_lastHistoryKey){return;}
     _lastHistoryKey=histKey;
     const atBot=body.scrollTop+body.clientHeight>=body.scrollHeight-40;
-    body.innerHTML=d.messages.map(m=>{const t=m.time?new Date(m.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';return`<div class="msg ${m.role}"><div>${(m.content||'').replace(/</g,'&lt;')}</div>${m.role!=='system'?`<div class="msg-t">${t}</div>`:''}</div>`;}).join('');
+    body.innerHTML=d.messages.map(m=>{const t=m.time?formatIST(m.time):'';return`<div class="msg ${m.role}"><div>${(m.content||'').replace(/</g,'&lt;')}</div>${m.role!=='system'?`<div class="msg-t">${t}</div>`:''}</div>`;}).join('');
     if(atBot)body.scrollTop=body.scrollHeight;
     if(activeData)loadActivityPanel(activeSid);
   }).catch(()=>{});
 }
-function claimSess(){if(!activeSid)return;fetch(API+'/agent/claim/'+activeSid+'?agent_name='+encodeURIComponent(agent),{method:'POST'}).then(()=>{toast('✓ Chat claimed');loadHistory();loadSessions();});}
+function claimSess(){if(!activeSid)return;fetch(API+'/support/claim/'+activeSid+'?agent_name='+encodeURIComponent(agent),{method:'POST'}).then(()=>{toast('✓ Chat claimed');loadHistory();loadSessions();});}
 function closeSess(){
   if(!activeSid)return;
-  fetch(API+'/agent/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid})}).then(()=>{
+  fetch(API+'/support/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid})}).then(()=>{
     activeSid=null;activeData=null;clearInterval(pollH);
     document.getElementById('cp-chat').style.display='none';
     document.getElementById('cp-empty').style.display='flex';
@@ -135,15 +135,15 @@ function closeSess(){
     toast('Session closed — user returned to AI bot');loadSessions();
   });
 }
-function sendReply(){const inp=document.getElementById('ri'),msg=inp.value.trim();if(!msg||!activeSid)return;inp.value='';fetch(API+'/agent/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid,agent_name:agent,message:msg})}).then(()=>{playReplySound();toast('✉️ Reply sent',1800);loadHistory();});}
+function sendReply(){const inp=document.getElementById('ri'),msg=inp.value.trim();if(!msg||!activeSid)return;inp.value='';fetch(API+'/support/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid,agent_name:agent,message:msg})}).then(()=>{playReplySound();toast('✉️ Reply sent',1800);loadHistory();});}
 function useQR(btn){document.getElementById('ri').value=btn.textContent.trim();document.getElementById('ri').focus();}
 
 /* Analytics */
 function toggleAna(){showAna=!showAna;document.getElementById('ap').classList.toggle('on',showAna);document.getElementById('anabtn').classList.toggle('on',showAna);if(showAna)loadAna();}
 async function loadAna(){
-  document.getElementById('ats').textContent='Last updated: '+new Date().toLocaleTimeString();
+  document.getElementById('ats').textContent='Last updated: '+formatIST(new Date());
   try{
-    const d=await fetch(API+'/admin/users').then(r=>r.json());
+    const d=await fetch(API+'/internal/admin/users').then(r=>r.json());
     const all=d.users||[];
     const tot=all.length,cl=all.filter(s=>s.status==='closed').length,wt=all.filter(s=>s.status==='waiting').length,wa=all.filter(s=>s.status==='with_agent').length;
     cnt('st',tot);cnt('sc2',cl);cnt('sw',wt);cnt('sa',wa);
@@ -154,7 +154,7 @@ async function loadAna(){
     setTimeout(()=>document.querySelectorAll('.bf[data-t]').forEach(el=>el.style.width=el.dataset.t),80);
     const st=[{l:'Bot',v:all.filter(s=>s.status==='bot').length,c:'#8B5CF6'},{l:'Waiting',v:wt,c:'#FF00C8'},{l:'Active',v:wa,c:'#22C55E'},{l:'Closed',v:cl,c:'#00F5FF'}].filter(s=>s.v>0);
     drawDonut(st,tot||1);
-    document.getElementById('utb').innerHTML=all.slice(0,12).map(u=>`<tr><td>${u.user_name||'—'}</td><td>${u.user_email||'—'}</td><td>${u.user_phone||'—'}</td><td><span class="tb ${u.status}">${u.status}</span></td><td>${u.issue_type||'general'}</td><td>${u.created_at?new Date(u.created_at).toLocaleDateString():'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--muted);padding:16px">No users yet</td></tr>';
+    document.getElementById('utb').innerHTML=all.slice(0,12).map(u=>`<tr><td>${u.user_name||'—'}</td><td>${u.user_email||'—'}</td><td>${u.user_phone||'—'}</td><td><span class="tb ${u.status}">${u.status}</span></td><td>${u.issue_type||'general'}</td><td>${u.created_at?formatIST(u.created_at, true):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--muted);padding:16px">No users yet</td></tr>';
   }catch(e){console.error(e);}
 }
 function cnt(id,target){const el=document.getElementById(id);let c=0;el.textContent='0';const step=Math.max(1,Math.ceil(target/30));const iv=setInterval(()=>{c=Math.min(c+step,target);el.textContent=c;if(c>=target)clearInterval(iv);},22);}
@@ -164,4 +164,26 @@ function drawDonut(stats,total){
   const segs=stats.map(s=>{const pct=s.v/total;const seg={...s,dash:ci*pct,off};off+=ci*pct;return seg;});
   svg.innerHTML=`<circle cx="21" cy="21" r="${r}" fill="transparent" stroke="rgba(0,245,255,.05)" stroke-width="6"/>`+segs.map(s=>`<circle cx="21" cy="21" r="${r}" fill="transparent" stroke="${s.c}" stroke-width="6" stroke-dasharray="${s.dash.toFixed(2)} ${(ci-s.dash).toFixed(2)}" stroke-dashoffset="${(ci/4-s.off).toFixed(2)}" style="filter:drop-shadow(0 0 5px ${s.c})"/>`).join('')+`<text x="21" y="20" text-anchor="middle" dominant-baseline="central" fill="#F0EEF8" font-size="6.5" font-weight="700" font-family="JetBrains Mono,monospace">${total}</text><text x="21" y="26" text-anchor="middle" dominant-baseline="central" fill="rgba(240,238,248,.4)" font-size="3" font-family="JetBrains Mono,monospace">sessions</text>`;
   leg.innerHTML=stats.map(s=>`<div class="dli"><div class="dd" style="background:${s.c};box-shadow:0 0 7px ${s.c}"></div>${s.l} <strong style="color:var(--text);margin-left:4px">${s.v}</strong></div>`).join('');
+}
+
+function formatIST(date, includeDate = false) {
+  if (!date) return '';
+  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+  if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+  
+  const options = {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  };
+  
+  if (includeDate) {
+    options.day = "2-digit";
+    options.month = "2-digit";
+    options.year = "numeric";
+  }
+  
+  const str = d.toLocaleString("en-IN", options);
+  return str.replace(',', '').toUpperCase();
 }

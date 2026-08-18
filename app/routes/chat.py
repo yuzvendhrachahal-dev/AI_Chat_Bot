@@ -46,13 +46,15 @@ class HandoffRequest(BaseModel):
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
-@router.post("/chat")
+@router.post("/chat", include_in_schema=False)
+@router.post("/api/chat")
 @limiter.limit("20/minute")
 async def chat(request: Request, req: ChatRequest):
     return await process_chat(req)
 
 
-@router.get("/poll/{session_id}")
+@router.get("/poll/{session_id}", include_in_schema=False)
+@router.get("/api/poll/{session_id}")
 async def poll_session(session_id: str, since_id: int = 0):
     try:
         res = process_poll_session(session_id, since_id)
@@ -61,7 +63,8 @@ async def poll_session(session_id: str, since_id: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/session/start")
+@router.get("/session/start", include_in_schema=False)
+@router.post("/api/session")
 @limiter.limit("10/minute")
 async def session_start(request: Request):
     try:
@@ -70,7 +73,8 @@ async def session_start(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/user/register")
+@router.post("/user/register", include_in_schema=False)
+@router.post("/api/register")
 @limiter.limit("5/minute")
 async def register_user(request: Request, req: RegisterRequest):
     print(f"Register attempt: {req.user_name} | {req.user_email} | {req.user_phone}")
@@ -122,7 +126,8 @@ async def register_user(request: Request, req: RegisterRequest):
     return api_response
 
 
-@router.post("/handoff")
+@router.post("/handoff", include_in_schema=False)
+@router.post("/api/handoff")
 async def handoff(req: HandoffRequest):
     try:
         create_or_update_handoff(req.session_id, req.user_name, req.user_email, req.user_phone, req.issue_type, req.priority)

@@ -52,12 +52,14 @@ templates = Jinja2Templates(directory="templates")
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.get("/agent/events")
+@router.get("/support/events")
 async def agent_events():
     """SSE stream for dashboard — pushes new session alerts"""
     return build_agent_events_response()
 
 
 @router.post("/agent/login")
+@router.post("/support/login")
 async def agent_login(req: AgentLoginRequest):
     try:
         return process_agent_login(req.username, req.password)
@@ -68,6 +70,7 @@ async def agent_login(req: AgentLoginRequest):
 
 
 @router.get("/agent/sessions")
+@router.get("/support/sessions")
 async def agent_sessions():
     try:
         return process_agent_sessions()
@@ -76,6 +79,7 @@ async def agent_sessions():
 
 
 @router.get("/agent/history/{session_id}")
+@router.get("/support/history/{session_id}")
 async def agent_history(session_id: str):
     try:
         return process_agent_history(session_id)
@@ -84,6 +88,7 @@ async def agent_history(session_id: str):
 
 
 @router.post("/agent/claim/{session_id}")
+@router.post("/support/claim/{session_id}")
 async def agent_claim(session_id: str, agent_name: str):
     try:
         return process_agent_claim(session_id, agent_name)
@@ -92,6 +97,7 @@ async def agent_claim(session_id: str, agent_name: str):
 
 
 @router.post("/agent/reply")
+@router.post("/support/reply")
 async def agent_reply(req: AgentReplyRequest):
     try:
         return process_agent_reply(req.session_id, req.message)
@@ -100,6 +106,7 @@ async def agent_reply(req: AgentReplyRequest):
 
 
 @router.post("/agent/close")
+@router.post("/support/close")
 async def agent_close(req: CloseSessionRequest):
     try:
         return process_agent_close(req.session_id)
@@ -108,6 +115,7 @@ async def agent_close(req: CloseSessionRequest):
 
 
 @router.get("/agent/all-sessions")
+@router.get("/support/all-sessions")
 async def agent_all_sessions():
     """Returns ALL sessions including closed ones for history view"""
     try:
@@ -117,6 +125,7 @@ async def agent_all_sessions():
 
 
 @router.get("/agent/dashboard", response_class=HTMLResponse)
+@router.get("/support/dashboard", response_class=HTMLResponse)
 async def agent_dashboard_page(request: Request):
     return templates.TemplateResponse(
     request=request,

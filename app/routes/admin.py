@@ -24,12 +24,14 @@ router = APIRouter()
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.get("/admin/users")
+@router.get("/internal/admin/users")
 async def admin_users():
     rows = get_admin_users()
     return {"users": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"status":r[4],"issue_type":r[5],"created_at":r[6],"updated_at":r[7]} for r in rows]}
 
 
 @router.get("/debug/env")
+@router.get("/internal/admin/debug/env")
 async def debug_env():
     return {
         "groq_loaded": bool(GROQ_API_KEY),
@@ -39,6 +41,7 @@ async def debug_env():
 
 
 @router.get("/admin/registrations")
+@router.get("/internal/admin/registrations")
 async def get_registrations():
     rows = get_all_registrations()
     return {"registrations": [{"session_id":r[0],"user_name":r[1],"user_email":r[2],"user_phone":r[3],"country_code":r[4],"synced_to_api":r[5],"created_at":r[6]} for r in rows]}
