@@ -9,7 +9,7 @@ Handles routes for:
 
 from fastapi import APIRouter
 
-from app.database.database import (
+from app.database.mongodb import (
     get_admin_users,
     get_all_registrations,
 )

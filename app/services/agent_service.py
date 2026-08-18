@@ -14,7 +14,7 @@ import json as json_lib
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.database.database import (
+from app.database.mongodb import (
     get_agent_by_username,
     get_active_agent_sessions,
     get_session_messages,

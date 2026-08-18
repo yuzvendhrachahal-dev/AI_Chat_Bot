@@ -17,7 +17,7 @@ from app.config.rate_limit import limiter
 from app.config.settings import ASTROVED_API_BASE, ASTROVED_JWT_TOKEN
 from app.services.chat_service import process_chat
 from app.services.agent_service import process_poll_session
-from app.database.database import (
+from app.database.mongodb import (
     create_or_update_session,
     save_user_registration,
     save_message,

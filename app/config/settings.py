@@ -6,11 +6,13 @@ load_dotenv()
 
 # API keys
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3-32b")
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY not found in .env file!")
 
 APP_URL = os.getenv("APP_URL")
-
+MONGO_URI = os.getenv("MONGO_URI")
+MONGO_DB = os.getenv("MONGO_DB", "astroved_chatbot")
 # Website URLs
 SITE = "https://www.astroved.com"
 ASTROVED_API_BASE = "https://qawebservice.astroved.com/api"

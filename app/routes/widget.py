@@ -11,7 +11,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from app.services.kb_service import KB_CHUNKS
-from app.config.settings import GROQ_API_KEY
+from app.config.settings import GROQ_API_KEY, GROQ_MODEL
 from app.config.topic_map import TOPIC_MAP
 
 router = APIRouter()
@@ -23,7 +23,7 @@ router = APIRouter()
 def root():
     return {
         "status": "AstroVed.AI is online",
-        "model": "llama-3.1-8b-instant",
+        "model": GROQ_MODEL,
         "api_key_loaded": bool(GROQ_API_KEY),
         "knowledge_chunks_loaded": len(KB_CHUNKS),
         "topics_loaded": len(TOPIC_MAP),

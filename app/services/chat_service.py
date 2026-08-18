@@ -1,8 +1,8 @@
 from groq import Groq
 from fastapi import HTTPException
 
-from app.config.settings import GROQ_API_KEY, SITE
-from app.database.database import get_and_update_session_status, save_message, get_history, create_or_update_handoff
+from app.config.settings import GROQ_API_KEY, SITE, GROQ_MODEL
+from app.database.mongodb import get_and_update_session_status, save_message, get_history, create_or_update_handoff
 from app.services.handoff_service import needs_handoff
 from app.services.language_service import detect_language
 from app.prompts.prompts import BASE_SYSTEM_PROMPT, TOPIC_FORCE_INSTRUCTION, LANGUAGE_INSTRUCTIONS, OFF_DOMAIN_REPLY, OFF_DOMAIN_REPLY_TAMIL
@@ -66,13 +66,19 @@ async def process_chat(req):
                 messages.append({"role": h["role"], "content": str(h["content"])})
         messages.append({"role": "user", "content": str(req.message)})
 
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=messages,
-            max_tokens=450,
-            temperature=0.45,
-            top_p=0.9,
-        )
+        try:
+            response = client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=messages,
+                max_tokens=450,
+                temperature=0.45,
+                top_p=0.9,
+            )
+        except Exception as model_err:
+            print(f"ERROR calling Groq model {GROQ_MODEL}: {str(model_err)}")
+            reply = "I'm sorry, but my AI model is currently unavailable or returning an error. Please try again later."
+            save_message(req.session_id, "assistant", reply)
+            return {"reply": reply, "mode": "bot", "topic_url": topic_url, "topic_label": topic_label}
         
         reply = response.choices[0].message.content
         save_message(req.session_id, "assistant", reply)

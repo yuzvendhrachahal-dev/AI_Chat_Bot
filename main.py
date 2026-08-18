@@ -15,8 +15,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.config.rate_limit import limiter
-from app.config.settings import APP_URL
-from app.database.database import init_db, seed_default_agents
+from app.config.settings import APP_URL, GROQ_MODEL
+from app.database.mongodb import init_db, seed_default_agents
 
 async def keep_alive():
     """Background task to keep the Render deployment awake."""
@@ -32,6 +32,7 @@ async def keep_alive():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print(f"Groq Model Loaded: {GROQ_MODEL}")
     # Start the keep-alive task on startup
     asyncio.create_task(keep_alive())
     yield
