@@ -6,7 +6,7 @@ load_dotenv()
 
 # API keys
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3-32b")
+GROQ_MODEL = os.getenv("GROQ_MODEL")
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY not found in .env file!")
 
