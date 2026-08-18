@@ -260,27 +260,42 @@ def get_waiting_or_active_sessions():
     return rows
 
 def save_user_registration(session_id: str, user_name: str, user_email: str, user_phone: str, country_code: str, synced_to_api: int = 0):
-    users_col.insert_one({
-        "session_id": session_id,
-        "user_name": user_name,
-        "user_email": user_email,
-        "user_phone": user_phone,
-        "country_code": country_code,
-        "synced_to_api": synced_to_api,
-        "created_at": datetime.now(timezone.utc)
-    })
-    
-    # Synchronize session document with registered user info
-    sessions_col.update_one(
-        {"session_id": session_id},
-        {
-            "$set": {
-                "user_name": user_name,
-                "user_email": user_email,
-                "user_phone": user_phone
+    try:
+        now = datetime.now(timezone.utc)
+        result = users_col.update_one(
+            {"session_id": session_id},
+            {
+                "$set": {
+                    "user_name": user_name,
+                    "user_email": user_email,
+                    "user_phone": user_phone,
+                    "country_code": country_code,
+                    "synced_to_api": synced_to_api,
+                    "updated_at": now
+                },
+                "$setOnInsert": {
+                    "created_at": now
+                }
+            },
+            upsert=True
+        )
+        
+        obj_id = result.upserted_id if result.upserted_id else "Updated existing"
+        print(f"MongoDB Upsert Success | Collection: users | Session: {session_id} | Result: {obj_id}")
+        
+        # Synchronize session document with registered user info
+        sessions_col.update_one(
+            {"session_id": session_id},
+            {
+                "$set": {
+                    "user_name": user_name,
+                    "user_email": user_email,
+                    "user_phone": user_phone
+                }
             }
-        }
-    )
+        )
+    except Exception as e:
+        print(f"MongoDB Upsert Failed | Collection: users | Error: {str(e)}")
 
 def get_all_registrations():
     cursor = users_col.find().sort("created_at", pymongo.DESCENDING).limit(100)
