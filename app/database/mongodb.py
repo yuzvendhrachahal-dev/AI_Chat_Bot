@@ -2,6 +2,32 @@ import pymongo
 import hashlib
 from datetime import datetime, timezone
 from pymongo import MongoClient
+
+
+def fmt_dt(dt) -> str:
+    """
+    Serialize a datetime to a UTC ISO-8601 string with a 'Z' suffix.
+
+    Always returns UTC regardless of whether the stored datetime is
+    timezone-aware or naive (naïve values are assumed to be UTC, which
+    matches the datetime.now(timezone.utc) storage convention used
+    throughout this application).
+
+    Example output: '2026-08-18T11:40:15.275Z'
+    """
+    if dt is None:
+        return None
+    if not isinstance(dt, datetime):
+        return str(dt)
+    if dt.tzinfo is None:
+        # Treat naive datetimes as UTC (matches our storage convention)
+        dt = dt.replace(tzinfo=timezone.utc)
+    # Express in UTC, format with millisecond precision and Z suffix
+    dt_utc = dt.astimezone(timezone.utc)
+    ms = dt_utc.microsecond // 1000
+    return dt_utc.strftime("%Y-%m-%dT%H:%M:%S.") + f"{ms:03d}Z"
+
+
 from app.config.settings import MONGO_URI, MONGO_DB
 
 # Connect to MongoDB Atlas
@@ -128,16 +154,16 @@ def get_admin_users():
     cursor = sessions_col.find().sort("updated_at", pymongo.DESCENDING)
     rows = []
     for doc in cursor:
-        rows.append((
-            doc.get("session_id"),
-            doc.get("user_name"),
-            doc.get("user_email"),
-            doc.get("user_phone"),
-            doc.get("status"),
-            doc.get("issue_type"),
-            doc.get("created_at"),
-            doc.get("updated_at")
-        ))
+        rows.append({
+            "session_id":  doc.get("session_id"),
+            "user_name":   doc.get("user_name"),
+            "user_email":  doc.get("user_email"),
+            "user_phone":  doc.get("user_phone"),
+            "status":      doc.get("status"),
+            "issue_type":  doc.get("issue_type"),
+            "created_at":  fmt_dt(doc.get("created_at")),
+            "updated_at":  fmt_dt(doc.get("updated_at")),
+        })
     return rows
 
 def get_and_update_session_status(session_id: str) -> str:
@@ -154,52 +180,60 @@ def get_session_poll_data(session_id: str, since_id: int = 0):
     messages_cursor = messages_col.find(
         {"session_id": session_id, "id": {"$gt": since_id}}
     ).sort("id", pymongo.ASCENDING)
-    
+
     rows = []
     for m in messages_cursor:
-        rows.append((m.get("id"), m.get("role"), m.get("content")))
-        
+        rows.append({"id": m.get("id"), "role": m.get("role"), "content": m.get("content")})
+
     status_doc = sessions_col.find_one({"session_id": session_id})
     status_row = None
     if status_doc:
-        status_row = (status_doc.get("status"), status_doc.get("assigned_agent"))
-        
+        status_row = {
+            "status":     status_doc.get("status"),
+            "agent_name": status_doc.get("assigned_agent"),
+        }
+
     return rows, status_row
 
 def get_agent_by_username(username: str):
     doc = agents_col.find_one({"username": username})
     if doc:
-        return (doc.get("display_name"), doc.get("password_hash"))
+        return {"display_name": doc.get("display_name"), "password_hash": doc.get("password_hash")}
     return None
 
 def get_active_agent_sessions():
     cursor = sessions_col.find(
         {"status": {"$in": ["waiting", "with_agent"]}}
     ).sort([("priority", pymongo.DESCENDING), ("updated_at", pymongo.ASCENDING)])
-    
+
     docs = list(cursor)
     docs.sort(key=lambda x: (0 if x.get("priority") == "urgent" else 1, x.get("updated_at") or datetime.now(timezone.utc)))
-    
+
     rows = []
     for doc in docs:
-        rows.append((
-            doc.get("session_id"),
-            doc.get("user_name"),
-            doc.get("user_email"),
-            doc.get("user_phone"),
-            doc.get("status"),
-            doc.get("assigned_agent"),
-            doc.get("issue_type"),
-            doc.get("priority"),
-            doc.get("updated_at")
-        ))
+        rows.append({
+            "session_id":     doc.get("session_id"),
+            "user_name":      doc.get("user_name"),
+            "user_email":     doc.get("user_email"),
+            "user_phone":     doc.get("user_phone"),
+            "status":         doc.get("status"),
+            "assigned_agent": doc.get("assigned_agent"),
+            "issue_type":     doc.get("issue_type"),
+            "priority":       doc.get("priority"),
+            "updated_at":     fmt_dt(doc.get("updated_at")),
+        })
     return rows
 
 def get_session_messages(session_id: str):
     cursor = messages_col.find({"session_id": session_id}).sort("id", pymongo.ASCENDING)
     rows = []
     for m in cursor:
-        rows.append((m.get("id"), m.get("role"), m.get("content"), m.get("created_at")))
+        rows.append({
+            "id":      m.get("id"),
+            "role":    m.get("role"),
+            "content": m.get("content"),
+            "time":    fmt_dt(m.get("created_at") or m.get("timestamp")),
+        })
     return rows
 
 def claim_session(session_id: str, agent_name: str):
@@ -231,32 +265,32 @@ def get_all_sessions():
     cursor = sessions_col.find().sort("updated_at", pymongo.DESCENDING).limit(100)
     rows = []
     for doc in cursor:
-        rows.append((
-            doc.get("session_id"),
-            doc.get("user_name"),
-            doc.get("user_email"),
-            doc.get("user_phone"),
-            doc.get("status"),
-            doc.get("assigned_agent"),
-            doc.get("issue_type"),
-            doc.get("priority"),
-            doc.get("updated_at")
-        ))
+        rows.append({
+            "session_id":     doc.get("session_id"),
+            "user_name":      doc.get("user_name"),
+            "user_email":     doc.get("user_email"),
+            "user_phone":     doc.get("user_phone"),
+            "status":         doc.get("status"),
+            "assigned_agent": doc.get("assigned_agent"),
+            "issue_type":     doc.get("issue_type"),
+            "priority":       doc.get("priority"),
+            "updated_at":     fmt_dt(doc.get("updated_at")),
+        })
     return rows
 
 def get_waiting_or_active_sessions():
     cursor = sessions_col.find(
         {"status": {"$in": ["waiting", "with_agent"]}}
     ).sort("updated_at", pymongo.DESCENDING)
-    
+
     rows = []
     for doc in cursor:
-        rows.append((
-            doc.get("session_id"),
-            doc.get("user_name"),
-            doc.get("status"),
-            doc.get("updated_at")
-        ))
+        rows.append({
+            "session_id": doc.get("session_id"),
+            "user_name":  doc.get("user_name"),
+            "status":     doc.get("status"),
+            "updated_at": fmt_dt(doc.get("updated_at")),
+        })
     return rows
 
 def save_user_registration(session_id: str, user_name: str, user_email: str, user_phone: str, country_code: str, synced_to_api: int = 0):
@@ -301,14 +335,14 @@ def get_all_registrations():
     cursor = users_col.find().sort("created_at", pymongo.DESCENDING).limit(100)
     rows = []
     for doc in cursor:
-        rows.append((
-            str(doc.get("_id")),
-            doc.get("session_id"),
-            doc.get("user_name"),
-            doc.get("user_email"),
-            doc.get("user_phone"),
-            doc.get("country_code"),
-            doc.get("synced_to_api"),
-            doc.get("created_at")
-        ))
+        rows.append({
+            "id":           str(doc.get("_id")),
+            "session_id":   doc.get("session_id"),
+            "user_name":    doc.get("user_name"),
+            "user_email":   doc.get("user_email"),
+            "user_phone":   doc.get("user_phone"),
+            "country_code": doc.get("country_code"),
+            "synced_to_api":doc.get("synced_to_api"),
+            "created_at":   fmt_dt(doc.get("created_at")),
+        })
     return rows

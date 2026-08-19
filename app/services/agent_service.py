@@ -37,9 +37,9 @@ def process_poll_session(session_id: str, since_id: int = 0) -> dict:
     """Return new messages and current session status for the chat widget."""
     rows, status_row = get_session_poll_data(session_id, since_id)
     return {
-        "messages": [{"id": r[0], "role": r[1], "content": r[2]} for r in rows],
-        "status": status_row[0] if status_row else "bot",
-        "agent_name": status_row[1] if status_row else None,
+        "messages": [{"id": r["id"], "role": r["role"], "content": r["content"]} for r in rows],
+        "status": status_row["status"] if status_row else "bot",
+        "agent_name": status_row["agent_name"] if status_row else None,
     }
 
 
@@ -65,10 +65,10 @@ def build_agent_events_response() -> StreamingResponse:
                         "count": count,
                         "sessions": [
                             {
-                                "session_id": r[0],
-                                "user_name": r[1],
-                                "status": r[2],
-                                "updated_at": r[3],
+                                "session_id": r["session_id"],
+                                "user_name":  r["user_name"],
+                                "status":     r["status"],
+                                "updated_at": r["updated_at"],
                             }
                             for r in rows
                         ],
@@ -99,9 +99,9 @@ def build_agent_events_response() -> StreamingResponse:
 def process_agent_login(username: str, password: str) -> dict:
     """Verify agent credentials and return identity on success."""
     row = get_agent_by_username(username)
-    if not row or row[1] != hash_password(password):
+    if not row or row["password_hash"] != hash_password(password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    return {"status": "ok", "display_name": row[0], "username": username}
+    return {"status": "ok", "display_name": row["display_name"], "username": username}
 
 
 # ---------------------------------------------------------------------------
@@ -114,15 +114,15 @@ def process_agent_sessions() -> dict:
     return {
         "sessions": [
             {
-                "session_id": r[0],
-                "user_name": r[1],
-                "user_email": r[2],
-                "user_phone": r[3],
-                "status": r[4],
-                "assigned_agent": r[5],
-                "issue_type": r[6],
-                "priority": r[7],
-                "updated_at": r[8],
+                "session_id":     r["session_id"],
+                "user_name":      r["user_name"],
+                "user_email":     r["user_email"],
+                "user_phone":     r["user_phone"],
+                "status":         r["status"],
+                "assigned_agent": r["assigned_agent"],
+                "issue_type":     r["issue_type"],
+                "priority":       r["priority"],
+                "updated_at":     r["updated_at"],
             }
             for r in rows
         ]
@@ -135,15 +135,15 @@ def process_agent_all_sessions() -> dict:
     return {
         "sessions": [
             {
-                "session_id": r[0],
-                "user_name": r[1],
-                "user_email": r[2],
-                "user_phone": r[3],
-                "status": r[4],
-                "assigned_agent": r[5],
-                "issue_type": r[6],
-                "priority": r[7],
-                "updated_at": r[8],
+                "session_id":     r["session_id"],
+                "user_name":      r["user_name"],
+                "user_email":     r["user_email"],
+                "user_phone":     r["user_phone"],
+                "status":         r["status"],
+                "assigned_agent": r["assigned_agent"],
+                "issue_type":     r["issue_type"],
+                "priority":       r["priority"],
+                "updated_at":     r["updated_at"],
             }
             for r in rows
         ]
@@ -159,7 +159,7 @@ def process_agent_history(session_id: str) -> dict:
     rows = get_session_messages(session_id)
     return {
         "messages": [
-            {"id": r[0], "role": r[1], "content": r[2], "time": r[3]}
+            {"id": r["id"], "role": r["role"], "content": r["content"], "time": r["time"]}
             for r in rows
         ]
     }
