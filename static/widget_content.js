@@ -145,10 +145,10 @@
       var row = document.createElement('div');
       row.className = 'av-mrow av-bot';
 
-      var cardHtml = '<div class="av-bbl av-bot" style="border:1px solid rgba(201,168,76,0.6); background:rgba(201,168,76,.08);">' +
-                     '<strong style="color:#E8C97A;font-family:\'Cinzel\',serif;">Need help from our support team?</strong><br><br>' +
+      var cardHtml = '<div class="av-bbl av-bot" style="border:1px solid #CBD5E1; background:#FFFFFF; box-shadow:0 2px 6px rgba(0,0,0,0.04);">' +
+                     '<strong style="color:#0F172A;font-family:\'Cinzel\',serif;font-size:13px;">Need help from our support team?</strong><br><br>' +
                      cleanMd(txt) + '<br><br>' +
-                     '<button class="av-sbtn" id="av-connect-support-btn" style="width:100%; margin-top:5px;">Connect to Support</button>' +
+                     '<button class="av-sbtn" id="av-connect-support-btn" style="width:100%; margin-top:6px;">Connect to Support</button>' +
                      '</div>';
 
       row.innerHTML = createAvatar('bot') + cardHtml;
@@ -250,11 +250,22 @@
 
       var m = $('av-msgs');
       var wc = document.createElement('div');
-      wc.className = 'av-wcard';
-      wc.innerHTML = '<div class="av-wcard-top">' +
-        '<div class="av-wcard-av"><img src="' + LOGO_SRC + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt=""/></div>' +
-        '<div class="av-wn">Namaste, ' + firstName + ' 🙏</div></div>' +
-        '<p>✨ Welcome to AstroVed.AI — your personal Vedic cosmos companion. How may the stars guide your path?</p>';
+      wc.className = 'av-wcard welcome-hero';
+      wc.innerHTML =
+        '<img src="' + LOGO_SRC + '" class="hero-logo" alt="AstroVed"/>' +
+        '<h2>✨ Welcome to AstroVed.AI</h2>' +
+        '<p class="hero-sub">Your Personal Vedic Astrology Assistant</p>' +
+        '<div class="hero-topics">' +
+        '<p>Ask anything about:</p>' +
+        '<ul>' +
+        '<li>• Horoscope</li>' +
+        '<li>• Compatibility</li>' +
+        '<li>• Pujas</li>' +
+        '<li>• Numerology</li>' +
+        '<li>• Birth Chart</li>' +
+        '<li>• Gemstones</li>' +
+        '</ul>' +
+        '</div>';
       m.appendChild(wc);
       botMsg('The cosmos awaits, ' + firstName + '! What would you like to explore today?',
         ['🌙 Horoscope', '📊 Birth Chart', '💑 Compatibility', '❤️ Love', '🌿 Remedies'], null);
@@ -409,15 +420,6 @@
       $('av-ended').classList.add('av-show');
     }
 
-    /* ── Rating ── */
-    var stars = document.querySelectorAll('.av-star');
-    stars.forEach(function (s, i) {
-      s.addEventListener('click', function () {
-        stars.forEach(function (x, j) { x.classList.toggle('av-on', j <= i); });
-        $('av-rt').style.display = 'block';
-      });
-    });
-
     /* ── Restart ── */
     function restart() {
       fetch(API + '/api/session', {method: 'POST'}).then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
@@ -433,8 +435,6 @@
       $('av-fs').style.display = 'flex';
       $('av-msgs').innerHTML = '';
       ['av-fn', 'av-fe', 'av-fp'].forEach(function (id) { $(id).value = ''; });
-      stars.forEach(function (s) { s.classList.remove('av-on'); });
-      $('av-rt').style.display = 'none';
     }
 
     /* ── Voice ── */
