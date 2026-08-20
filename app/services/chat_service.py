@@ -115,10 +115,9 @@ async def process_chat(req):
         save_message(req.session_id, "user", req.message)
         
         if needs_handoff(req.message):
-            create_or_update_handoff(req.session_id, req.user_name, req.user_email, req.user_phone, "general", "normal")
-            reply = "I understand this needs special attention. Connecting you with our specialist team now — they'll be with you shortly! 🎧"
+            reply = "I don't have access to customer account or order information.\n\nOur customer support team can assist you."
             save_message(req.session_id, "assistant", reply)
-            return {"reply": reply, "mode": "handoff_triggered", "topic_url": None, "topic_label": None}
+            return {"reply": reply, "mode": "support_card", "topic_url": None, "topic_label": None}
             
         detected_lang = detect_language(req.message)
         topic_url, topic_label = match_topic(req.message)

@@ -139,6 +139,50 @@
       m.appendChild(row); scrl();
     }
 
+    /* ── Support Card ── */
+    function showSupportCard(txt) {
+      var m = $('av-msgs');
+      var row = document.createElement('div');
+      row.className = 'av-mrow av-bot';
+
+      var cardHtml = '<div class="av-bbl av-bot" style="border:1px solid rgba(201,168,76,0.6); background:rgba(201,168,76,.08);">' +
+                     '<strong style="color:#E8C97A;font-family:\'Cinzel\',serif;">Need help from our support team?</strong><br><br>' +
+                     cleanMd(txt) + '<br><br>' +
+                     '<button class="av-sbtn" id="av-connect-support-btn" style="width:100%; margin-top:5px;">Connect to Support</button>' +
+                     '</div>';
+
+      row.innerHTML = createAvatar('bot') + cardHtml;
+      m.appendChild(row); scrl();
+
+      var btn = row.querySelector('#av-connect-support-btn');
+      btn.addEventListener('click', function() {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.innerHTML = 'Submitting...';
+        
+        fetch(API + '/api/handoff', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessId,
+            user_name: uName,
+            user_email: uEmail,
+            user_phone: uPhone,
+            issue_type: 'support_request',
+            priority: 'normal'
+          })
+        }).then(function() {
+          btn.innerHTML = '✓ Support request submitted<br><span style="font-size:10px; opacity:0.8;">Ref: ' + Math.floor(Math.random()*1000000) + '</span>';
+          btn.style.background = '#22c55e';
+          btn.style.color = '#fff';
+          handoffTriggered = true;
+          syncThenPoll();
+        }).catch(function() {
+          btn.disabled = false;
+          btn.innerHTML = 'Failed. Try again.';
+        });
+      });
+    }
+
     /* ── Typing ── */
     function showTyping() {
       var m = $('av-msgs');
@@ -230,12 +274,6 @@
       var reqId = msgCounter;
       userMsg(txt);
 
-      if (!handoffTriggered && CRM_KW.some(function (k) { return txt.toLowerCase().includes(k); })) {
-        botMsg('Let me connect you with our specialist team right away!', [], null);
-        setTimeout(showCRM, 800);
-        return;
-      }
-
       isSending = true;
       $('av-send-btn').disabled = true;
       showTyping();
@@ -256,6 +294,7 @@
             rmTyping();
             if (d.mode === 'with_agent') { handoffTriggered = true; syncThenPoll(); return; }
             if (d.mode === 'handoff_triggered') { handoffTriggered = true; botMsg(d.reply, [], null); syncThenPoll(); return; }
+            if (d.mode === 'support_card') { showSupportCard(d.reply); return; }
             var link = (d.topic_url && d.topic_label)
               ? { url: d.topic_url, label: d.topic_label }
               : getFallbackLink(txt);

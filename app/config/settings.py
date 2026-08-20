@@ -33,5 +33,9 @@ HANDOFF_KEYWORDS = [
     'refund', 'billing issue', 'invoice problem', 'payment failed', 'payment issue',
     'cancel my subscription', 'complaint', 'talk to agent', 'talk to a human',
     'speak to agent', 'speak to a human', 'human agent', 'call me back',
-    'account issue', 'order tracking', 'not working', 'broken', 'urgent help'
+    'account issue', 'order tracking', 'not working', 'broken', 'urgent help',
+    'order status', 'payment', 'subscription', 'login', 'missing report', 
+    'delivery', 'booking issue', 'invoice', 'technical issue', 'website issue', 
+    'need customer support', 'need human', 'contact support', 'support team',
+    'customer support'
 ]
