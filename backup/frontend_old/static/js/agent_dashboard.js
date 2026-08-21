@@ -86,7 +86,6 @@ function filterCards(){renderCards();}
 function openSess(s){
   if(showAna)toggleAna();
   activeSid=s.session_id;activeData=s;
-  const b=document.getElementById('body');if(b)b.classList.add('chat-active');
   document.getElementById('cp-empty').style.display='none';
   const cc=document.getElementById('cp-chat');cc.style.display='flex';
   const ini=(s.user_name||'?').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
@@ -107,7 +106,7 @@ function loadActivityPanel(sid){
   fetch(API+'/support/history/'+sid).then(r=>r.json()).then(d=>{
     const msgs=d.messages||[];
     const dc={user:'#00F5FF',assistant:'#8B5CF6',system:'#C9A84C'};
-    document.getElementById('rp-activity').innerHTML=msgs.length?msgs.slice(-12).reverse().map(m=>`<div class="aitem"><div class="adot" style="background:${dc[m.role]||'#999'}"></div><div><div class="atext">${(m.content||'').slice(0,80)}${(m.content||'').length>80?'…':''}</div><div class="atime">${m.role} · ${m.time?formatIST(m.time):''}</div></div></div>`).join(''):'<div class="a-empty">No messages yet</div>';
+    document.getElementById('rp-activity').innerHTML=msgs.length?msgs.slice(-12).reverse().map(m=>`<div class="aitem"><div class="adot" style="background:${dc[m.role]||'#999'};box-shadow:0 0 6px ${dc[m.role]||'#999'}"></div><div><div class="atext">${(m.content||'').slice(0,80)}${(m.content||'').length>80?'…':''}</div><div class="atime">${m.role} · ${m.time?formatIST(m.time):''}</div></div></div>`).join(''):'<div class="a-empty">No messages yet</div>';
   }).catch(()=>{});
 }
 function loadHistory(){
@@ -129,38 +128,12 @@ function closeSess(){
   if(!activeSid)return;
   fetch(API+'/support/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid})}).then(()=>{
     activeSid=null;activeData=null;clearInterval(pollH);
-    const b=document.getElementById('body');if(b)b.classList.remove('chat-active');
     document.getElementById('cp-chat').style.display='none';
     document.getElementById('cp-empty').style.display='flex';
     document.getElementById('rp-user').innerHTML='<div class="ucard"><div style="text-align:center;padding:30px 0;color:var(--muted);font-size:12px"><div style="font-size:34px;opacity:.14;color:var(--cyan)">◈</div><p style="margin-top:10px">Select a chat to see user details</p></div></div>';
     document.getElementById('rp-activity').innerHTML='<div class="a-empty">Select a chat to see activity</div>';
     toast('Session closed — user returned to AI bot');loadSessions();
   });
-}
-function backToEmptyChat(){
-  if(pollH)clearInterval(pollH);
-  activeSid=null;activeData=null;
-  const b=document.getElementById('body');if(b)b.classList.remove('chat-active');
-  document.getElementById('cp-chat').style.display='none';
-  document.getElementById('cp-empty').style.display='flex';
-  document.getElementById('rp-user').innerHTML='<div class="ucard"><div style="text-align:center;padding:30px 0;color:var(--muted);font-size:12px"><div style="font-size:34px;opacity:.14;color:var(--cyan)">◈</div><p style="margin-top:10px">Select a chat to see user details</p></div></div>';
-  document.getElementById('rp-activity').innerHTML='<div class="a-empty">Select a chat to see activity</div>';
-  renderCards();
-}
-function togglePasswordVisibility(){
-  const p=document.getElementById('lp');
-  const eye=document.getElementById('eyeIcon');
-  const eyeOff=document.getElementById('eyeOffIcon');
-  if(!p||!eye||!eyeOff)return;
-  if(p.type==='password'){
-    p.type='text';
-    eye.style.display='none';
-    eyeOff.style.display='block';
-  }else{
-    p.type='password';
-    eye.style.display='block';
-    eyeOff.style.display='none';
-  }
 }
 function sendReply(){const inp=document.getElementById('ri'),msg=inp.value.trim();if(!msg||!activeSid)return;inp.value='';fetch(API+'/support/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid,agent_name:agent,message:msg})}).then(()=>{playReplySound();toast('✉️ Reply sent',1800);loadHistory();});}
 function useQR(btn){document.getElementById('ri').value=btn.textContent.trim();document.getElementById('ri').focus();}
@@ -189,8 +162,8 @@ function drawDonut(stats,total){
   const svg=document.getElementById('donut'),leg=document.getElementById('dleg');
   const r=15.9,ci=2*Math.PI*r;let off=0;
   const segs=stats.map(s=>{const pct=s.v/total;const seg={...s,dash:ci*pct,off};off+=ci*pct;return seg;});
-  svg.innerHTML=`<circle cx="21" cy="21" r="${r}" fill="transparent" stroke="rgba(0,245,255,.05)" stroke-width="6"/>`+segs.map(s=>`<circle cx="21" cy="21" r="${r}" fill="transparent" stroke="${s.c}" stroke-width="6" stroke-dasharray="${s.dash.toFixed(2)} ${(ci-s.dash).toFixed(2)}" stroke-dashoffset="${(ci/4-s.off).toFixed(2)}"/>`).join('')+`<text x="21" y="20" text-anchor="middle" dominant-baseline="central" fill="#F0EEF8" font-size="6.5" font-weight="700" font-family="JetBrains Mono,monospace">${total}</text><text x="21" y="26" text-anchor="middle" dominant-baseline="central" fill="rgba(240,238,248,.4)" font-size="3" font-family="JetBrains Mono,monospace">sessions</text>`;
-  leg.innerHTML=stats.map(s=>`<div class="dli"><div class="dd" style="background:${s.c}"></div>${s.l} <strong style="color:var(--text);margin-left:4px">${s.v}</strong></div>`).join('');
+  svg.innerHTML=`<circle cx="21" cy="21" r="${r}" fill="transparent" stroke="rgba(0,245,255,.05)" stroke-width="6"/>`+segs.map(s=>`<circle cx="21" cy="21" r="${r}" fill="transparent" stroke="${s.c}" stroke-width="6" stroke-dasharray="${s.dash.toFixed(2)} ${(ci-s.dash).toFixed(2)}" stroke-dashoffset="${(ci/4-s.off).toFixed(2)}" style="filter:drop-shadow(0 0 5px ${s.c})"/>`).join('')+`<text x="21" y="20" text-anchor="middle" dominant-baseline="central" fill="#F0EEF8" font-size="6.5" font-weight="700" font-family="JetBrains Mono,monospace">${total}</text><text x="21" y="26" text-anchor="middle" dominant-baseline="central" fill="rgba(240,238,248,.4)" font-size="3" font-family="JetBrains Mono,monospace">sessions</text>`;
+  leg.innerHTML=stats.map(s=>`<div class="dli"><div class="dd" style="background:${s.c};box-shadow:0 0 7px ${s.c}"></div>${s.l} <strong style="color:var(--text);margin-left:4px">${s.v}</strong></div>`).join('');
 }
 
 function formatIST(date, includeDate = false) {
