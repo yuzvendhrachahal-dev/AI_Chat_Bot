@@ -27,6 +27,7 @@ from app.services.agent_service import (
     process_agent_claim,
     process_agent_reply,
     process_agent_close,
+    process_session_analytics,
 )
 
 router = APIRouter()
@@ -120,6 +121,15 @@ async def agent_all_sessions():
     """Returns ALL sessions including closed ones for history view"""
     try:
         return process_agent_all_sessions()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/agent/analytics")
+@router.get("/support/analytics")
+async def agent_analytics():
+    """Returns aggregated analytics data and recent users from MongoDB"""
+    try:
+        return process_session_analytics()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

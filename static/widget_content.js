@@ -225,13 +225,54 @@
 
     /* ── Start Chat (Form Submit) ── */
     function startChat() {
-      var n = $('av-fn').value.trim();
-      var e = $('av-fe').value.trim();
-      var p = $('av-fp').value.trim();
+      var nEl = $('av-fn');
+      var eEl = $('av-fe');
+      var pEl = $('av-fp');
       var cc = $('av-fcc').value;
-      if (!n) { shk('av-fn'); return; }
-      if (!e || !e.includes('@')) { shk('av-fe'); return; }
-      if (!p || p.length < 7) { shk('av-fp'); return; }
+
+      var n = nEl.value.trim();
+      var e = eEl.value.trim();
+      var p = pEl.value.trim();
+
+      var errBox = $('av-form-error-msg');
+      errBox.style.display = 'none';
+      errBox.innerText = '';
+      nEl.classList.remove('err');
+      eEl.classList.remove('err');
+      pEl.classList.remove('err');
+
+      var hasEmpty = !n || !e || !p;
+
+      if (hasEmpty) {
+        var msg = "Please complete all required fields to continue.";
+        if (!p && n && e) {
+          msg = "Please enter your phone number.";
+        }
+        errBox.innerText = msg;
+        errBox.style.display = 'block';
+
+        if (!n) { nEl.classList.add('err'); shk('av-fn'); }
+        if (!e) { eEl.classList.add('err'); shk('av-fe'); }
+        if (!p) { pEl.classList.add('err'); shk('av-fp'); }
+        return;
+      }
+
+      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(e)) {
+        errBox.innerText = "Please enter a valid email address.";
+        errBox.style.display = 'block';
+        eEl.classList.add('err');
+        shk('av-fe');
+        return;
+      }
+
+      if (p.length < 7) {
+        errBox.innerText = "Please enter a valid phone number.";
+        errBox.style.display = 'block';
+        pEl.classList.add('err');
+        shk('av-fp');
+        return;
+      }
 
       uName = n.split(' ')[0]; uEmail = e; uPhone = p;
 
@@ -477,6 +518,21 @@
     $('av-fn').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('av-fe').focus(); });
     $('av-fe').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('av-fp').focus(); });
     $('av-fp').addEventListener('keydown', function (e) { if (e.key === 'Enter') startChat(); });
+
+    // Clear err classes and error message when corrected
+    ['av-fn', 'av-fe', 'av-fp'].forEach(function (id) {
+      var el = $(id);
+      if (el) {
+        el.addEventListener('input', function () {
+          el.classList.remove('err');
+          var errs = document.querySelectorAll('.av-fg input.err');
+          if (errs.length === 0) {
+            var errBox = $('av-form-error-msg');
+            if (errBox) errBox.style.display = 'none';
+          }
+        });
+      }
+    });
 
     document.addEventListener('click', function (e) {
       var l = $('av-launcher');

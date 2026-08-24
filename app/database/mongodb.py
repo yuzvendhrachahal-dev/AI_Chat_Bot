@@ -169,10 +169,6 @@ def get_admin_users():
 def get_and_update_session_status(session_id: str) -> str:
     doc = sessions_col.find_one({"session_id": session_id})
     if doc and doc.get("status") == "closed":
-        sessions_col.update_one(
-            {"session_id": session_id},
-            {"$set": {"status": "bot", "updated_at": datetime.now(timezone.utc)}}
-        )
         return "bot"
     return doc.get("status", "bot") if doc else "bot"
 
@@ -236,15 +232,16 @@ def get_session_messages(session_id: str):
         })
     return rows
 
-def claim_session(session_id: str, agent_name: str):
-    sessions_col.update_one(
-        {"session_id": session_id},
+def claim_session(session_id: str, agent_name: str) -> bool:
+    result = sessions_col.update_one(
+        {"session_id": session_id, "status": "waiting"},
         {"$set": {
             "status": "with_agent",
             "assigned_agent": agent_name,
             "updated_at": datetime.now(timezone.utc)
         }}
     )
+    return result.modified_count > 0
 
 def touch_session(session_id: str):
     sessions_col.update_one(
@@ -252,14 +249,15 @@ def touch_session(session_id: str):
         {"$set": {"updated_at": datetime.now(timezone.utc)}}
     )
 
-def close_session(session_id: str):
-    sessions_col.update_one(
-        {"session_id": session_id},
+def close_session(session_id: str) -> bool:
+    result = sessions_col.update_one(
+        {"session_id": session_id, "status": "with_agent"},
         {"$set": {
             "status": "closed",
             "updated_at": datetime.now(timezone.utc)
         }}
     )
+    return result.modified_count > 0
 
 def get_all_sessions():
     cursor = sessions_col.find().sort("updated_at", pymongo.DESCENDING).limit(100)
@@ -277,6 +275,52 @@ def get_all_sessions():
             "updated_at":     fmt_dt(doc.get("updated_at")),
         })
     return rows
+
+def get_session_analytics():
+    db_name = db.name
+    col_name = sessions_col.name
+    
+    total = sessions_col.count_documents({})
+    
+    # Status breakdown
+    status_pipeline = [{"$group": {"_id": "$status", "count": {"$sum": 1}}}]
+    status_results = list(sessions_col.aggregate(status_pipeline))
+    counts = {"waiting": 0, "with_agent": 0, "closed": 0, "bot": 0}
+    for r in status_results:
+        if r["_id"] in counts:
+            counts[r["_id"]] = r["count"]
+            
+    # Issue types breakdown
+    issue_pipeline = [{"$group": {"_id": "$issue_type", "count": {"$sum": 1}}}]
+    issue_results = list(sessions_col.aggregate(issue_pipeline))
+    issues = { (r["_id"] if r["_id"] else "general"): r["count"] for r in issue_results }
+    
+    # Recent users (limit 12)
+    recent_cursor = sessions_col.find().sort("created_at", pymongo.DESCENDING).limit(12)
+    recent = []
+    for doc in recent_cursor:
+        recent.append({
+            "session_id":  doc.get("session_id"),
+            "user_name":   doc.get("user_name"),
+            "user_email":  doc.get("user_email"),
+            "user_phone":  doc.get("user_phone"),
+            "status":      doc.get("status"),
+            "issue_type":  doc.get("issue_type"),
+            "created_at":  fmt_dt(doc.get("created_at") or doc.get("updated_at")),
+            "updated_at":  fmt_dt(doc.get("updated_at")),
+        })
+
+    print(f"[DIAGNOSTICS] DB: {db_name} | Collection: {col_name} | Total sessions found: {total}")
+    
+    return {
+        "total": total,
+        "waiting": counts["waiting"],
+        "claimed": counts["with_agent"],
+        "completed": counts["closed"],
+        "bot": counts["bot"],
+        "issues": issues,
+        "recent_users": recent
+    }
 
 def get_waiting_or_active_sessions():
     cursor = sessions_col.find(

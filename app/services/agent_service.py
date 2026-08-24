@@ -26,6 +26,7 @@ from app.database.mongodb import (
     close_session,
     save_message,
     hash_password,
+    get_session_analytics,
 )
 
 
@@ -149,6 +150,14 @@ def process_agent_all_sessions() -> dict:
         ]
     }
 
+# ---------------------------------------------------------------------------
+# Analytics
+# ---------------------------------------------------------------------------
+
+def process_session_analytics() -> dict:
+    """Return comprehensive analytics aggregated from MongoDB."""
+    return get_session_analytics()
+
 
 # ---------------------------------------------------------------------------
 # Chat History
@@ -171,8 +180,9 @@ def process_agent_history(session_id: str) -> dict:
 
 def process_agent_claim(session_id: str, agent_name: str) -> dict:
     """Claim a waiting session and notify the user."""
-    claim_session(session_id, agent_name)
-    save_message(session_id, "system", f"{agent_name} has joined the chat")
+    claimed = claim_session(session_id, agent_name)
+    if claimed:
+        save_message(session_id, "system", f"{agent_name} has joined the chat")
     return {"status": "claimed"}
 
 
@@ -185,10 +195,11 @@ def process_agent_reply(session_id: str, message: str) -> dict:
 
 def process_agent_close(session_id: str) -> dict:
     """Close a session and append a closure notice to the transcript."""
-    close_session(session_id)
-    save_message(
-        session_id,
-        "system",
-        "Agent has ended this conversation. Chat history preserved.",
-    )
+    closed = close_session(session_id)
+    if closed:
+        save_message(
+            session_id,
+            "system",
+            "Agent has ended this conversation. Chat history preserved.",
+        )
     return {"status": "closed"}

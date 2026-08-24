@@ -60,39 +60,42 @@
 
   <!-- FORM SCREEN -->
   <div class="av-scr" id="av-fs">
-    <div class="av-fhero">
-      <img class="av-fhero-logo" id="av-form-logo" alt="AstroVed"/>
-      <h2>Begin Your Journey</h2>
-      <p>Share a little about yourself to get started.</p>
-    </div>
-    <div class="av-fg">
-      <label>Your Name</label>
-      <input type="text" id="av-fn" placeholder="e.g. Arjun Sharma" autocomplete="name"/>
-    </div>
-    <div class="av-fg">
-      <label>Email Address</label>
-      <input type="email" id="av-fe" placeholder="you@example.com" autocomplete="email"/>
-    </div>
-    <div class="av-fg">
-      <label>Phone Number</label>
-      <div class="av-phone-row">
-        <select id="av-fcc" class="av-cc" aria-label="Country code">
-          <option value="+91">🇮🇳 +91</option>
-          <option value="+1">🇺🇸 +1</option>
-          <option value="+44">🇬🇧 +44</option>
-          <option value="+61">🇦🇺 +61</option>
-          <option value="+971">🇦🇪 +971</option>
-          <option value="+65">🇸🇬 +65</option>
-          <option value="+60">🇲🇾 +60</option>
-          <option value="+94">🇱🇰 +94</option>
-          <option value="+880">🇧🇩 +880</option>
-          <option value="+92">🇵🇰 +92</option>
-        </select>
-        <input type="tel" id="av-fp" placeholder="98765 43210" autocomplete="tel"/>
+    <div class="av-form-body">
+      <div class="av-fhero">
+        <img class="av-fhero-logo" id="av-form-logo" alt="AstroVed"/>
+        <h2>Begin Your Journey</h2>
+        <p>Share a little about yourself to get started.</p>
       </div>
+      <div id="av-form-error-msg" class="av-form-error-msg" style="display:none;" role="alert"></div>
+      <div class="av-fg">
+        <label for="av-fn">Your Name</label>
+        <input type="text" id="av-fn" placeholder="e.g. Arjun Sharma" autocomplete="name"/>
+      </div>
+      <div class="av-fg">
+        <label for="av-fe">Email Address</label>
+        <input type="email" id="av-fe" placeholder="you@example.com" autocomplete="email"/>
+      </div>
+      <div class="av-fg">
+        <label for="av-fp">Phone Number</label>
+        <div class="av-phone-row">
+          <select id="av-fcc" class="av-cc" aria-label="Country code">
+            <option value="+91">🇮🇳 +91</option>
+            <option value="+1">🇺🇸 +1</option>
+            <option value="+44">🇬🇧 +44</option>
+            <option value="+61">🇦🇺 +61</option>
+            <option value="+971">🇦🇪 +971</option>
+            <option value="+65">🇸🇬 +65</option>
+            <option value="+60">🇲🇾 +60</option>
+            <option value="+94">🇱🇰 +94</option>
+            <option value="+880">🇧🇩 +880</option>
+            <option value="+92">🇵🇰 +92</option>
+          </select>
+          <input type="tel" id="av-fp" placeholder="98765 43210" autocomplete="tel"/>
+        </div>
+      </div>
+      <button class="av-sbtn" id="av-start-btn">✦ &nbsp;Start Consulting</button>
+      <p class="av-prv" id="av-prv-msg">🔒 Your information is private &amp; secure</p>
     </div>
-    <button class="av-sbtn" id="av-start-btn">✦ &nbsp;Start Consulting</button>
-    <p class="av-prv" id="av-prv-msg">🔒 Your information is private &amp; secure</p>
   </div>
 
   <!-- CHAT SCREEN -->

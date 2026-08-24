@@ -46,7 +46,15 @@ function doLogout(){sessionStorage.clear();clearInterval(pollL);clearInterval(po
 /* Sessions */
 function loadSessions(){
   fetch(API+'/support/all-sessions').then(r=>r.json()).then(all=>{
-    allSessions=all.sessions||[];
+    let rawSessions = all.sessions || [];
+    let seen = new Set();
+    allSessions = [];
+    for (let s of rawSessions) {
+        if (!seen.has(s.session_id)) {
+            seen.add(s.session_id);
+            allSessions.push(s);
+        }
+    }
     const active=allSessions.filter(s=>s.status==='waiting'||s.status==='with_agent');
     document.getElementById('qbadge').textContent=active.length;
     document.getElementById('ss-w').textContent=active.filter(s=>s.status==='waiting').length;
@@ -57,7 +65,6 @@ function loadSessions(){
 function renderCards(){
   const q=document.getElementById('srch').value.toLowerCase();
   let list=allSessions.filter(s=>{
-    if(curTab==='all'&&s.status==='closed')return false;
     if(curTab!=='all'&&s.status!==curTab)return false;
     if(q&&!(s.user_name||'').toLowerCase().includes(q)&&!(s.user_email||'').toLowerCase().includes(q))return false;
     return true;
@@ -95,6 +102,40 @@ function openSess(s){
   document.getElementById('ch-sub').textContent=(s.user_email||'')+(s.user_phone?' · '+s.user_phone:'');
   const tags=document.getElementById('ch-tags');
   tags.innerHTML=`<span class="ch-tag status-${s.status}">${s.status}</span>${s.assigned_agent?`<span class="ch-tag">Agent: ${s.assigned_agent}</span>`:''}<span class="ch-tag">${s.issue_type||'general'}</span>`;
+  
+  const claimBtn = document.querySelector('.hbtn.claim');
+  const endBtn = document.querySelector('.hbtn.end');
+  if (s.status === 'with_agent') {
+      claimBtn.textContent = 'Chat Claimed';
+      claimBtn.disabled = true;
+      claimBtn.style.opacity = '0.5';
+      claimBtn.style.cursor = 'not-allowed';
+      claimBtn.style.display = 'inline-block';
+      endBtn.textContent = 'End & Return to Bot';
+      endBtn.style.display = 'inline-block';
+      endBtn.disabled = false;
+      endBtn.style.opacity = '1';
+      endBtn.style.cursor = 'pointer';
+  } else if (s.status === 'waiting') {
+      claimBtn.textContent = 'Claim Chat';
+      claimBtn.disabled = false;
+      claimBtn.style.opacity = '1';
+      claimBtn.style.cursor = 'pointer';
+      claimBtn.style.display = 'inline-block';
+      endBtn.textContent = 'End & Return to Bot';
+      endBtn.style.display = 'inline-block';
+      endBtn.disabled = false;
+      endBtn.style.opacity = '1';
+      endBtn.style.cursor = 'pointer';
+  } else {
+      claimBtn.style.display = 'none';
+      endBtn.textContent = 'Chat Ended';
+      endBtn.disabled = true;
+      endBtn.style.opacity = '0.5';
+      endBtn.style.cursor = 'not-allowed';
+      endBtn.style.display = 'inline-block';
+  }
+
   loadHistory();clearInterval(pollH);pollH=setInterval(loadHistory,3000);
   renderCards();renderUserPanel(s);loadActivityPanel(s.session_id);
 }
@@ -124,17 +165,29 @@ function loadHistory(){
     if(activeData)loadActivityPanel(activeSid);
   }).catch(()=>{});
 }
-function claimSess(){if(!activeSid)return;fetch(API+'/support/claim/'+activeSid+'?agent_name='+encodeURIComponent(agent),{method:'POST'}).then(()=>{toast('✓ Chat claimed');loadHistory();loadSessions();});}
+function claimSess(){
+  if(!activeSid)return;
+  fetch(API+'/support/claim/'+activeSid+'?agent_name='+encodeURIComponent(agent),{method:'POST'})
+  .then(()=>{
+    toast('✓ Chat claimed');
+    if(activeData) {
+        activeData.status = 'with_agent';
+        activeData.assigned_agent = agent;
+        openSess(activeData);
+    }
+    loadHistory();
+    loadSessions();
+  });
+}
 function closeSess(){
   if(!activeSid)return;
   fetch(API+'/support/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSid})}).then(()=>{
-    activeSid=null;activeData=null;clearInterval(pollH);
-    const b=document.getElementById('body');if(b)b.classList.remove('chat-active');
-    document.getElementById('cp-chat').style.display='none';
-    document.getElementById('cp-empty').style.display='flex';
-    document.getElementById('rp-user').innerHTML='<div class="ucard"><div style="text-align:center;padding:30px 0;color:var(--muted);font-size:12px"><div style="font-size:34px;opacity:.14;color:var(--cyan)">◈</div><p style="margin-top:10px">Select a chat to see user details</p></div></div>';
-    document.getElementById('rp-activity').innerHTML='<div class="a-empty">Select a chat to see activity</div>';
-    toast('Session closed — user returned to AI bot');loadSessions();
+    toast('Session closed — user returned to AI bot');
+    if(activeData) {
+        activeData.status = 'closed';
+        openSess(activeData);
+    }
+    loadSessions();
   });
 }
 function backToEmptyChat(){
@@ -170,18 +223,21 @@ function toggleAna(){showAna=!showAna;document.getElementById('ap').classList.to
 async function loadAna(){
   document.getElementById('ats').textContent='Last updated: '+formatIST(new Date());
   try{
-    const d=await fetch(API+'/internal/admin/users').then(r=>r.json());
-    const all=d.users||[];
-    const tot=all.length,cl=all.filter(s=>s.status==='closed').length,wt=all.filter(s=>s.status==='waiting').length,wa=all.filter(s=>s.status==='with_agent').length;
-    cnt('st',tot);cnt('sc2',cl);cnt('sw',wt);cnt('sa',wa);
-    const iss={};all.forEach(s=>{const k=s.issue_type||'general';iss[k]=(iss[k]||0)+1;});
+    const d=await fetch(API+'/support/analytics').then(r=>r.json());
+    const counts=d||{};
+    cnt('st',counts.total||0);
+    cnt('sc2',counts.completed||0);
+    cnt('sw',counts.waiting||0);
+    cnt('sa',counts.claimed||0);
+    const iss=counts.issues||{};
     const ie=Object.entries(iss).sort((a,b)=>b[1]-a[1]).slice(0,6);
     const mx=ie[0]?ie[0][1]:1;const cls=['p','g','o','y','p','g'];
     document.getElementById('ibars').innerHTML=ie.map(([k,v],i)=>`<div class="br"><div class="bl">${k}</div><div class="bt"><div class="bf ${cls[i]}" style="width:0" data-t="${Math.round(v/mx*100)}%"></div></div><div class="bv">${v}</div></div>`).join('')||'<div style="color:var(--muted);font-size:11px;padding:8px 0">No data yet</div>';
     setTimeout(()=>document.querySelectorAll('.bf[data-t]').forEach(el=>el.style.width=el.dataset.t),80);
-    const st=[{l:'Bot',v:all.filter(s=>s.status==='bot').length,c:'#8B5CF6'},{l:'Waiting',v:wt,c:'#FF00C8'},{l:'Active',v:wa,c:'#22C55E'},{l:'Closed',v:cl,c:'#00F5FF'}].filter(s=>s.v>0);
-    drawDonut(st,tot||1);
-    document.getElementById('utb').innerHTML=all.slice(0,12).map(u=>`<tr><td>${u.user_name||'—'}</td><td>${u.user_email||'—'}</td><td>${u.user_phone||'—'}</td><td><span class="tb ${u.status}">${u.status}</span></td><td>${u.issue_type||'general'}</td><td>${u.created_at?formatIST(u.created_at, true):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--muted);padding:16px">No users yet</td></tr>';
+    const st=[{l:'Bot',v:counts.bot||0,c:'#8B5CF6'},{l:'Waiting',v:counts.waiting||0,c:'#FF00C8'},{l:'Active',v:counts.claimed||0,c:'#22C55E'},{l:'Closed',v:counts.completed||0,c:'#00F5FF'}].filter(s=>s.v>0);
+    drawDonut(st,counts.total||1);
+    const recent = counts.recent_users || [];
+    document.getElementById('utb').innerHTML=recent.map(u=>`<tr><td>${u.user_name||'—'}</td><td>${u.user_email||'—'}</td><td>${u.user_phone||'—'}</td><td><span class="tb ${u.status}">${u.status}</span></td><td>${u.issue_type||'general'}</td><td>${u.created_at?formatIST(u.created_at):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--muted);padding:16px">No users yet</td></tr>';
   }catch(e){console.error(e);}
 }
 function cnt(id,target){const el=document.getElementById(id);let c=0;el.textContent='0';const step=Math.max(1,Math.ceil(target/30));const iv=setInterval(()=>{c=Math.min(c+step,target);el.textContent=c;if(c>=target)clearInterval(iv);},22);}
@@ -193,24 +249,16 @@ function drawDonut(stats,total){
   leg.innerHTML=stats.map(s=>`<div class="dli"><div class="dd" style="background:${s.c}"></div>${s.l} <strong style="color:var(--text);margin-left:4px">${s.v}</strong></div>`).join('');
 }
 
-function formatIST(date, includeDate = false) {
+function formatIST(date) {
   if (!date) return '';
   const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
   if (!(d instanceof Date) || isNaN(d.getTime())) return '';
   
-  const options = {
-    timeZone: "Asia/Kolkata",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true
-  };
+  const optsDate = { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" };
+  const optsTime = { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true };
   
-  if (includeDate) {
-    options.day = "2-digit";
-    options.month = "2-digit";
-    options.year = "numeric";
-  }
+  const datePart = d.toLocaleDateString("en-IN", optsDate);
+  const timePart = d.toLocaleTimeString("en-IN", optsTime).toUpperCase();
   
-  const str = d.toLocaleString("en-IN", options);
-  return str.replace(',', '').toUpperCase();
+  return `${datePart} • ${timePart}`;
 }

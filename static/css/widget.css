@@ -52,7 +52,43 @@
 /* SCREENS */
 .av-scr{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 /* FORM */
-#av-fs{padding:24px;display:flex;flex-direction:column;overflow-y:auto}
+#av-fs {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.av-form-body {
+  margin: auto 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.av-form-error-msg {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  text-align: center;
+  box-sizing: border-box;
+  animation: av-shk 0.4s ease;
+}
+
+.av-fg input.err, .av-fg select.err {
+  border: 1px solid #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
 .av-fhero{text-align:center;margin-bottom:24px}
 .av-fhero-logo{width:64px;height:64px;border-radius:12px;margin:0 auto 12px;display:block;
   border:none;
