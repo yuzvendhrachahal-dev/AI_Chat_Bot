@@ -1,90 +1,165 @@
-from fastapi import FastAPI
+import os
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+from app.config.rate_limit import limiter
+from app.config.settings import GROQ_MODEL
+from app.database.mongodb import init_db, seed_default_agents
 
 from app.routes.chat import router as chat_router
 from app.routes.agent import router as agent_router
 from app.routes.admin import router as admin_router
 from app.routes.widget import router as widget_router
 
-import asyncio
-import httpx
-from contextlib import asynccontextmanager
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
 
-from app.config.rate_limit import limiter
-from app.config.settings import APP_URL, GROQ_MODEL
-from app.database.mongodb import init_db, seed_default_agents
-
-async def keep_alive():
-    """Background task to keep the Render deployment awake."""
-    await asyncio.sleep(10)
-    while True:
-        try:
-            async with httpx.AsyncClient(timeout=10) as c:
-                r = await c.get(APP_URL)
-                print(f"Keep-alive ping OK status={r.status_code}")
-        except Exception as e:
-            print(f"Keep-alive failed (ok): {e}")
-        await asyncio.sleep(600)
+# ─────────────────────────────────────────────────────────────────────────────
+# Application lifespan
+# ─────────────────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start the keep-alive task on startup
-    asyncio.create_task(keep_alive())
+    # Application startup
     yield
 
-import os
+    # Application shutdown
+    pass
 
-# Initialize FastAPI Application
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FastAPI Application
+# ─────────────────────────────────────────────────────────────────────────────
+
 kwargs = {
     "title": "AstroVed Chatbot API",
     "description": "Backend services for AstroVed AI Chatbot and Agent Dashboard",
     "lifespan": lifespan,
 }
 
+
+# Disable public API documentation in production
 if os.getenv("ENV") == "production":
     kwargs["docs_url"] = None
     kwargs["redoc_url"] = None
     kwargs["openapi_url"] = None
 
+
 app = FastAPI(**kwargs)
 
-# Configure CORS Middleware
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CORS
+# ─────────────────────────────────────────────────────────────────────────────
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        #"https://www.astrovedchat.com",
+        "*",
+    ],
     allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-# Configure Rate Limiter
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rate Limiting
+# ─────────────────────────────────────────────────────────────────────────────
+
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler
+)
+
 app.add_middleware(SlowAPIMiddleware)
 
-# Initialize Database and Seed Default Agents
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Database Initialization
+# ─────────────────────────────────────────────────────────────────────────────
+
 init_db()
 seed_default_agents()
 
-# Mount Static Files Directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
-from fastapi import Request, HTTPException, Depends
+# ─────────────────────────────────────────────────────────────────────────────
+# Static Files
+# ─────────────────────────────────────────────────────────────────────────────
+
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static"
+)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal Admin Protection
+# ─────────────────────────────────────────────────────────────────────────────
 
 async def verify_internal(request: Request):
     if request.client.host not in ["127.0.0.1", "localhost", "::1"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden"
+        )
 
-# Register All Route Modules
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Routes
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Public chatbot routes
 app.include_router(chat_router)
-app.include_router(agent_router, include_in_schema=False)
-app.include_router(admin_router, include_in_schema=False, dependencies=[Depends(verify_internal)])
+
+# Agent dashboard and agent APIs
+app.include_router(
+    agent_router,
+    include_in_schema=False
+)
+
+# Internal admin routes
+app.include_router(
+    admin_router,
+    include_in_schema=False,
+    dependencies=[Depends(verify_internal)]
+)
+
+# Chatbot widget
 app.include_router(widget_router)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Application Info
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/")
+async def root():
+    return {
+        "status": "AstroVed.AI is online",
+        "model": GROQ_MODEL,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Local Development
+# ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )
