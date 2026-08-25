@@ -22,6 +22,7 @@ from app.database.mongodb import (
     save_user_registration,
     save_message,
     create_or_update_handoff,
+    get_session_restore_data
 )
 
 router = APIRouter()
@@ -63,6 +64,18 @@ async def poll_session(session_id: str, since_id: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/session/restore/{session_id}", include_in_schema=False)
+@router.get("/api/session/restore/{session_id}")
+async def restore_session(session_id: str):
+    try:
+        data = get_session_restore_data(session_id)
+        if not data:
+            return {"status": "ended"}
+        return {"status": "active", "session": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/session/start", include_in_schema=False)
 @router.post("/api/session")
 @limiter.limit("10/minute")
@@ -87,6 +100,10 @@ async def register_user(request: Request, req: RegisterRequest):
 
     synced = 0
     api_response = {"StatusCode": 200, "Status": "OK", "Message": "Saved with fallback"}
+    
+    # IMMEDIATELY create the session in MongoDB so it exists if the user refreshes
+    # during the slow AstroVed API call.
+    create_or_update_session(req.session_id, req.user_name, req.user_email, req.user_phone)
     
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -122,6 +139,7 @@ async def register_user(request: Request, req: RegisterRequest):
     finally:
         # 2, 3, 4, 8: Always save to MongoDB regardless of AstroVed API result.
         save_user_registration(req.session_id, req.user_name, req.user_email, req.user_phone, req.country_code, synced)
+        create_or_update_session(req.session_id, req.user_name, req.user_email, req.user_phone)
 
     return api_response
 

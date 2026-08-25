@@ -49,7 +49,21 @@
 
     var uName = '', uEmail = '', uPhone = '';
     var sessId = '';
-    fetch(API + '/api/session', {method: 'POST'}).then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
+    var storedSessId = localStorage.getItem('astroved_session_id');
+    if (storedSessId) {
+        sessId = storedSessId;
+    } else {
+        fetch(API + '/api/session', {method: 'POST'})
+            .then(function(r){return r.json();})
+            .then(function(d){
+                sessId = d.session_id;
+                localStorage.setItem('astroved_session_id', sessId);
+            })
+            .catch(function(){
+                sessId = 'sess_' + Math.random().toString(36).slice(2);
+                localStorage.setItem('astroved_session_id', sessId);
+            });
+    }
     var listening = false, recog = null;
     var msgCounter = 0, pollTimer = null, lastMsgId = 0;
     var isSending = false;
@@ -456,6 +470,7 @@
     function hideEnd() { $('av-eo').classList.remove('av-show'); }
     function doEnd() {
       hideEnd();
+      localStorage.removeItem('astroved_session_id');
       $('av-cs').classList.remove('av-active');
       $('av-crm-panel').classList.remove('av-active');
       $('av-ended').classList.add('av-show');
@@ -463,7 +478,11 @@
 
     /* ── Restart ── */
     function restart() {
-      fetch(API + '/api/session', {method: 'POST'}).then(function(r){return r.json();}).then(function(d){sessId=d.session_id;}).catch(function(){sessId='sess_'+Math.random().toString(36).slice(2);});
+      localStorage.removeItem('astroved_session_id');
+      fetch(API + '/api/session', {method: 'POST'})
+        .then(function(r){return r.json();})
+        .then(function(d){sessId=d.session_id; localStorage.setItem('astroved_session_id', sessId);})
+        .catch(function(){sessId='sess_'+Math.random().toString(36).slice(2); localStorage.setItem('astroved_session_id', sessId);});
       uName = ''; uEmail = ''; uPhone = '';
       msgCounter = 0; lastMsgId = 0;
       answeredIds = {};
@@ -533,6 +552,38 @@
         });
       }
     });
+
+    if (storedSessId) {
+      fetch(API + '/api/session/restore/' + storedSessId)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.status === 'active') {
+            uName = d.session.user_name || ''; uEmail = d.session.user_email || ''; uPhone = d.session.user_phone || '';
+            var msgs = $('av-msgs');
+            msgs.innerHTML = '';
+            d.session.messages.forEach(function(m) {
+              if(m.id > lastMsgId) lastMsgId = m.id;
+              if(m.role === 'user') {
+                userMsg(m.content, m.id);
+              } else if(m.role === 'assistant') {
+                botMsg(m.content, [], null);
+              }
+            });
+            msgCounter = d.session.messages.length;
+            $('av-fs').style.display = 'none';
+            $('av-cs').classList.add('av-active');
+            msgs.scrollTop = msgs.scrollHeight;
+            if (!isOpen) toggleWin();
+            if(!pollTimer) syncThenPoll();
+          } else {
+            localStorage.removeItem('astroved_session_id');
+            fetch(API + '/api/session', {method: 'POST'})
+              .then(function(r){return r.json();})
+              .then(function(newD){sessId = newD.session_id; localStorage.setItem('astroved_session_id', sessId);});
+          }
+        })
+        .catch(function(e){ console.error('Restore err:', e); });
+    }
 
     document.addEventListener('click', function (e) {
       var l = $('av-launcher');

@@ -191,6 +191,28 @@ def get_session_poll_data(session_id: str, since_id: int = 0):
 
     return rows, status_row
 
+def get_session_restore_data(session_id: str):
+    doc = sessions_col.find_one({"session_id": session_id})
+    if not doc or doc.get("status") == "closed":
+        return None
+        
+    messages_cursor = messages_col.find(
+        {"session_id": session_id}
+    ).sort("id", pymongo.ASCENDING)
+    
+    messages = []
+    for m in messages_cursor:
+        messages.append({"id": m.get("id"), "role": m.get("role"), "content": m.get("content")})
+        
+    return {
+        "status": doc.get("status"),
+        "user_name": doc.get("user_name", ""),
+        "user_email": doc.get("user_email", ""),
+        "user_phone": doc.get("user_phone", ""),
+        "messages": messages,
+        "agent_name": doc.get("assigned_agent")
+    }
+
 def get_agent_by_username(username: str):
     doc = agents_col.find_one({"username": username})
     if doc:
@@ -368,9 +390,15 @@ def save_user_registration(session_id: str, user_name: str, user_email: str, use
                 "$set": {
                     "user_name": user_name,
                     "user_email": user_email,
-                    "user_phone": user_phone
+                    "user_phone": user_phone,
+                    "updated_at": now
+                },
+                "$setOnInsert": {
+                    "status": "bot",
+                    "created_at": now
                 }
-            }
+            },
+            upsert=True
         )
     except Exception as e:
         print(f"MongoDB Upsert Failed | Collection: users | Error: {str(e)}")

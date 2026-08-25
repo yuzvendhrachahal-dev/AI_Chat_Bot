@@ -243,15 +243,19 @@
       min-height: 0
     }
 
-    /* â”€â”€ Form â”€â”€ */
+    /* ── Form ── */
     #fs {
       padding: 20px;
-      display: flex;
+      display: none;
       flex-direction: column;
       overflow-y: auto;
       height: 100%;
       min-height: 0;
       box-sizing: border-box;
+    }
+
+    #fs.active {
+      display: flex;
     }
 
     .form-body {
