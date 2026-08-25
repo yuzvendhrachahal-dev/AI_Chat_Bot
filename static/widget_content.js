@@ -29,8 +29,8 @@
   document.body.appendChild(root);
 
   fetch(API + '/static/templates/widget.html')
-    .then(function(res) { return res.text(); })
-    .then(function(html) {
+    .then(function (res) { return res.text(); })
+    .then(function (html) {
       root.innerHTML = html;
       initWidget();
     });
@@ -51,25 +51,25 @@
     var sessId = '';
     var storedSessId = localStorage.getItem('astroved_session_id');
     if (storedSessId) {
-        sessId = storedSessId;
+      sessId = storedSessId;
     } else {
-        fetch(API + '/api/session', {method: 'POST'})
-            .then(function(r){return r.json();})
-            .then(function(d){
-                sessId = d.session_id;
-                localStorage.setItem('astroved_session_id', sessId);
-            })
-            .catch(function(){
-                sessId = 'sess_' + Math.random().toString(36).slice(2);
-                localStorage.setItem('astroved_session_id', sessId);
-            });
+      fetch(API + '/api/session', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          sessId = d.session_id;
+          localStorage.setItem('astroved_session_id', sessId);
+        })
+        .catch(function () {
+          sessId = 'sess_' + Math.random().toString(36).slice(2);
+          localStorage.setItem('astroved_session_id', sessId);
+        });
     }
     var listening = false, recog = null;
     var msgCounter = 0, pollTimer = null, lastMsgId = 0;
     var isSending = false;
     var answeredIds = {};
-    var syncInProgress = false; 
-    var handoffTriggered = false; 
+    var syncInProgress = false;
+    var handoffTriggered = false;
 
     /* ── Helpers ── */
     function $(id) { return document.getElementById(id); }
@@ -160,20 +160,20 @@
       row.className = 'av-mrow av-bot';
 
       var cardHtml = '<div class="av-bbl av-bot" style="border:1px solid #CBD5E1; background:#FFFFFF; box-shadow:0 2px 6px rgba(0,0,0,0.04);">' +
-                     '<strong style="color:#0F172A;font-family:\'Cinzel\',serif;font-size:13px;">Need help from our support team?</strong><br><br>' +
-                     cleanMd(txt) + '<br><br>' +
-                     '<button class="av-sbtn" id="av-connect-support-btn" style="width:100%; margin-top:6px;">Connect to Support</button>' +
-                     '</div>';
+        '<strong style="color:#0F172A;font-family:\'Cinzel\',serif;font-size:13px;">Need help from our support team?</strong><br><br>' +
+        cleanMd(txt) + '<br><br>' +
+        '<button class="av-sbtn" id="av-connect-support-btn" style="width:100%; margin-top:6px;">Connect to Support</button>' +
+        '</div>';
 
       row.innerHTML = createAvatar('bot') + cardHtml;
       m.appendChild(row); scrl();
 
       var btn = row.querySelector('#av-connect-support-btn');
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function () {
         if (btn.disabled) return;
         btn.disabled = true;
         btn.innerHTML = 'Submitting...';
-        
+
         fetch(API + '/api/handoff', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -184,13 +184,13 @@
             issue_type: 'support_request',
             priority: 'normal'
           })
-        }).then(function() {
-          btn.innerHTML = '✓ Support request submitted<br><span style="font-size:10px; opacity:0.8;">Ref: ' + Math.floor(Math.random()*1000000) + '</span>';
+        }).then(function () {
+          btn.innerHTML = '✓ Support request submitted<br><span style="font-size:10px; opacity:0.8;">Ref: ' + Math.floor(Math.random() * 1000000) + '</span>';
           btn.style.background = '#22c55e';
           btn.style.color = '#fff';
           handoffTriggered = true;
           syncThenPoll();
-        }).catch(function() {
+        }).catch(function () {
           btn.disabled = false;
           btn.innerHTML = 'Failed. Try again.';
         });
@@ -400,7 +400,7 @@
 
     function syncThenPoll() {
       if (pollTimer) return;
-      if (syncInProgress) return; 
+      if (syncInProgress) return;
       syncInProgress = true;
       fetch(API + '/api/poll/' + sessId + '?since_id=' + lastMsgId)
         .then(function (r) { return r.json(); })
@@ -408,7 +408,7 @@
           if (d.messages && d.messages.length) {
             d.messages.forEach(function (m) {
               lastMsgId = Math.max(lastMsgId, m.id);
-              answeredIds[m.id] = true; 
+              answeredIds[m.id] = true;
             });
           }
           startPolling();
@@ -420,7 +420,7 @@
     /* ── Opt Buttons ── */
     function doOpt(b) {
       var txt = b.textContent.trim();
-      var container = b.closest('.av-opt-btns'); 
+      var container = b.closest('.av-opt-btns');
       if (container) container.remove();
       $('av-inp').value = txt;
       send();
@@ -434,13 +434,13 @@
       row.className = 'av-mrow av-bot';
       row.innerHTML =
         createAvatar('bot') +
-        createBubble('bot', 
-        '🎧 <strong>Connect with Our Team</strong><br>Choose how you\'d like to reach us:' +
-        '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' +
-        '<a class="av-link-btn" style="justify-content:center" href="https://api.whatsapp.com/send?phone=919677391109&text=' + encodeURIComponent('Hello, I need assistance.') + '" target="_blank" rel="noopener">💬 WhatsApp — +91 96773 91109</a>' +
-        '<a class="av-link-btn" style="justify-content:center" href="mailto:support@astroved.com">✉️ Email — support@astroved.com</a>' +
-        '<a class="av-link-btn" style="justify-content:center" href="tel:+919677391108">📞 Call — +91 96773 91108</a>' +
-        '</div>');
+        createBubble('bot',
+          '🎧 <strong>Connect with Our Team</strong><br>Choose how you\'d like to reach us:' +
+          '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' +
+          '<a class="av-link-btn" style="justify-content:center" href="https://api.whatsapp.com/send?phone=919677391109&text=' + encodeURIComponent('Hello, I need assistance.') + '" target="_blank" rel="noopener">💬 WhatsApp — +91 96773 91109</a>' +
+          '<a class="av-link-btn" style="justify-content:center" href="mailto:support@astroved.com">✉️ Email — support@astroved.com</a>' +
+          '<a class="av-link-btn" style="justify-content:center" href="tel:+919677391108">📞 Call — +91 96773 91108</a>' +
+          '</div>');
       m.appendChild(row);
       scrl();
 
@@ -479,10 +479,10 @@
     /* ── Restart ── */
     function restart() {
       localStorage.removeItem('astroved_session_id');
-      fetch(API + '/api/session', {method: 'POST'})
-        .then(function(r){return r.json();})
-        .then(function(d){sessId=d.session_id; localStorage.setItem('astroved_session_id', sessId);})
-        .catch(function(){sessId='sess_'+Math.random().toString(36).slice(2); localStorage.setItem('astroved_session_id', sessId);});
+      fetch(API + '/api/session', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { sessId = d.session_id; localStorage.setItem('astroved_session_id', sessId); })
+        .catch(function () { sessId = 'sess_' + Math.random().toString(36).slice(2); localStorage.setItem('astroved_session_id', sessId); });
       uName = ''; uEmail = ''; uPhone = '';
       msgCounter = 0; lastMsgId = 0;
       answeredIds = {};
@@ -555,17 +555,17 @@
 
     if (storedSessId) {
       fetch(API + '/api/session/restore/' + storedSessId)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if(d.status === 'active') {
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.status === 'active') {
             uName = d.session.user_name || ''; uEmail = d.session.user_email || ''; uPhone = d.session.user_phone || '';
             var msgs = $('av-msgs');
             msgs.innerHTML = '';
-            d.session.messages.forEach(function(m) {
-              if(m.id > lastMsgId) lastMsgId = m.id;
-              if(m.role === 'user') {
+            d.session.messages.forEach(function (m) {
+              if (m.id > lastMsgId) lastMsgId = m.id;
+              if (m.role === 'user') {
                 userMsg(m.content, m.id);
-              } else if(m.role === 'assistant') {
+              } else if (m.role === 'assistant') {
                 botMsg(m.content, [], null);
               }
             });
@@ -574,15 +574,15 @@
             $('av-cs').classList.add('av-active');
             msgs.scrollTop = msgs.scrollHeight;
             if (!isOpen) toggleWin();
-            if(!pollTimer) syncThenPoll();
+            if (!pollTimer) syncThenPoll();
           } else {
             localStorage.removeItem('astroved_session_id');
-            fetch(API + '/api/session', {method: 'POST'})
-              .then(function(r){return r.json();})
-              .then(function(newD){sessId = newD.session_id; localStorage.setItem('astroved_session_id', sessId);});
+            fetch(API + '/api/session', { method: 'POST' })
+              .then(function (r) { return r.json(); })
+              .then(function (newD) { sessId = newD.session_id; localStorage.setItem('astroved_session_id', sessId); });
           }
         })
-        .catch(function(e){ console.error('Restore err:', e); });
+        .catch(function (e) { console.error('Restore err:', e); });
     }
 
     document.addEventListener('click', function (e) {

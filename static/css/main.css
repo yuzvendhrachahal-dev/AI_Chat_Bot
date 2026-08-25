@@ -1,13 +1,14 @@
     @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
     :root {
       --gold: #d97706;
       --gold-l: #ea6b06;
-      --gold-glow: rgba(217,119,6,0.3);
+      --gold-glow: rgba(217, 119, 6, 0.3);
       --deep: #ffffff;
       --panel: #fff6e9;
       --surface: #ffffff;
       --border: #ebdcc8;
-      --border2: rgba(217,119,6,0.1);
+      --border2: rgba(217, 119, 6, 0.1);
       --text: #374151;
       --text-light: #ffffff;
       --text-hdr: #431407;
@@ -101,7 +102,7 @@
       height: 38px;
       border-radius: 50%;
       border: none;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       object-fit: cover;
       flex-shrink: 0;
     }
@@ -281,7 +282,8 @@
       animation: shk 0.4s ease;
     }
 
-    .fg input.err, .fg select.err {
+    .fg input.err,
+    .fg select.err {
       border: 1px solid #ef4444 !important;
       box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
     }
@@ -298,7 +300,7 @@
       margin: 0 auto 10px;
       display: block;
       border: none;
-      
+
     }
 
     .fhero h2 {
@@ -397,7 +399,7 @@
     .sbtn:hover {
       background: var(--gold-l);
       transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(217,164,65,0.25);
+      box-shadow: 0 4px 16px rgba(217, 164, 65, 0.25);
     }
 
     .sbtn:disabled {
@@ -884,7 +886,7 @@
     #inp:focus {
       border-color: var(--gold);
       box-shadow: 0 0 0 3px var(--gold-glow);
-    
+
       line-height: 1.4;
       max-height: 80px;
       transition: border-color .2s;
@@ -945,7 +947,7 @@
     #vbtn:hover {
       background: var(--hover-bg);
       border-color: var(--gold);
-    
+
       justify-content: center;
       flex-shrink: 0;
       transition: all .2s
@@ -1042,19 +1044,22 @@
     .crm-wa {
       background: rgba(37, 211, 102, .1);
       border-color: rgba(37, 211, 102, .35);
-      color: #15803d; /* Dark green */
+      color: #15803d;
+      /* Dark green */
     }
 
     .crm-mail {
       background: rgba(59, 130, 246, .1);
       border-color: rgba(59, 130, 246, .35);
-      color: #1d4ed8; /* Dark blue */
+      color: #1d4ed8;
+      /* Dark blue */
     }
 
     .crm-phone {
       background: rgba(201, 168, 76, .1);
       border-color: rgba(201, 168, 76, .35);
-      color: #b45309; /* Dark gold/amber */
+      color: #b45309;
+      /* Dark gold/amber */
     }
 
     .crm-icon {
@@ -1121,7 +1126,7 @@
       display: none;
       position: absolute;
       inset: 0;
-      background: rgba(255,246,233,.95);
+      background: rgba(255, 246, 233, .95);
       backdrop-filter: blur(16px);
       z-index: 50;
       align-items: center;
@@ -1252,7 +1257,7 @@
       height: 64px;
       border-radius: 50%;
       border: none;
-      
+
       object-fit: cover
     }
 
@@ -1309,7 +1314,7 @@
       cursor: pointer;
       transition: all .25s;
       box-shadow: 0 4px 18px rgba(201, 148, 60, .45), 0 1px 4px rgba(201, 148, 60, .2);
-      text-shadow: 0 1px 2px rgba(0,0,0,.2);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .2);
     }
 
     .restart-btn:hover {
@@ -1513,5 +1518,3 @@
         transform: translateX(5px)
       }
     }
-
-
