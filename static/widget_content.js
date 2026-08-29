@@ -582,7 +582,7 @@
               .then(function (newD) { sessId = newD.session_id; localStorage.setItem('astroved_session_id', sessId); });
           }
         })
-        .catch(function (e) { console.error('Restore err:', e); });
+        .catch(function (e) { });
     }
 
     document.addEventListener('click', function (e) {

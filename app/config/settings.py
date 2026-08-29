@@ -15,10 +15,6 @@ MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB = os.getenv("MONGO_DB", "astroved_chatbot")
 
 
-print("Mongo URI:", os.getenv("MONGO_URI"))
-print("Mongo DB:", os.getenv("MONGO_DB"))
-
-
 # Website URLs
 SITE = "https://www.astroved.com"
 ASTROVED_API_BASE = "https://qawebservice.astroved.com/api"
