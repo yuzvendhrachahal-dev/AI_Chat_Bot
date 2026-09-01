@@ -336,16 +336,15 @@
     .fg select {
       width: 100%;
       background: #ffffff;
-      border: none;
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 10px 12px;
       font-family: var(--font-b);
       font-size: 13px;
       color: var(--text);
+      color-scheme: light;
       outline: none;
       transition: border-color .2s, box-shadow .2s;
-      -webkit-appearance: none;
-      appearance: none;
       box-shadow: 0 1px 2px var(--border2)
     }
 
@@ -361,8 +360,17 @@
     }
 
     .fg select option {
-      background: #1a1735;
+      background: #ffffff;
       color: var(--text);
+      color-scheme: light;
+    }
+
+    .fg select option:hover,
+    .fg select option:focus,
+    .fg select option:active,
+    .fg select option:checked {
+      background: var(--hover-bg, #fdebd0);
+      color: var(--text-hdr, #431407);
     }
 
     .phone-row {
