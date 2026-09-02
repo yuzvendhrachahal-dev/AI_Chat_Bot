@@ -366,13 +366,18 @@
               : getFallbackLink(txt);
             botMsg(d.reply || 'Please try again.', [], link);
           })
-          .catch(function () {
-            if (attempt < 2) { setTimeout(function () { callAPI(txt, attempt + 1, reqId); }, 2000); }
+          .catch(function (err) {
+            if (attempt < 2 && navigator.onLine) { setTimeout(function () { callAPI(txt, attempt + 1, reqId); }, 2000); }
             else {
               isSending = false;
               $('av-send-btn').disabled = false;
               rmTyping();
-              botMsg('Server is waking up… Please resend in 30 seconds! 🔄', [], null);
+              if (!navigator.onLine) {
+                 console.log('[RECOVERY-DEBUG] network request failed - preserving session');
+                 botMsg('Connection issue. Please try again when online! 🔄', [], null);
+              } else {
+                 botMsg('Server is waking up… Please resend in 30 seconds! 🔄', [], null);
+              }
             }
           });
       }, 200);
@@ -553,11 +558,17 @@
       }
     });
 
-    if (storedSessId) {
-      fetch(API + '/api/session/restore/' + storedSessId)
+    console.log('[RECOVERY-DEBUG] page loaded');
+
+    function performRestore(sessionId) {
+      console.log('[RECOVERY-DEBUG] restore started: ' + sessionId);
+      fetch(API + '/api/session/restore/' + sessionId)
         .then(function (r) { return r.json(); })
         .then(function (d) {
+          console.log('[RECOVERY-DEBUG] restore response: ', d);
           if (d.status === 'active') {
+            console.log('[SESSION] setting ACTIVE chat');
+            console.log('[RECOVERY-DEBUG] setChatState: chat');
             uName = d.session.user_name || ''; uEmail = d.session.user_email || ''; uPhone = d.session.user_phone || '';
             var msgs = $('av-msgs');
             msgs.innerHTML = '';
@@ -573,8 +584,15 @@
             $('av-fs').style.display = 'none';
             $('av-cs').classList.add('av-active');
             msgs.scrollTop = msgs.scrollHeight;
-            if (!isOpen) toggleWin();
-            if (!pollTimer) syncThenPoll();
+            if (!isOpen) {
+              toggleWin();
+              console.log('[RECOVERY-DEBUG] toggleWin/open (auto-open on restore)');
+            }
+            if (!pollTimer) {
+              syncThenPoll();
+              console.log('[RECOVERY-DEBUG] polling resumed');
+            }
+            console.log('[RECOVERY-DEBUG] network recovery complete');
           } else {
             localStorage.removeItem('astroved_session_id');
             fetch(API + '/api/session', { method: 'POST' })
@@ -582,8 +600,33 @@
               .then(function (newD) { sessId = newD.session_id; localStorage.setItem('astroved_session_id', sessId); });
           }
         })
-        .catch(function (e) { });
+        .catch(function (e) {
+           console.log('[RECOVERY-DEBUG] network request failed - preserving session');
+        });
     }
+
+    if (storedSessId) {
+      console.log('[RECOVERY-DEBUG] stored session: ' + storedSessId);
+      performRestore(storedSessId);
+    }
+
+    window.addEventListener('offline', function() {
+      console.log('[RECOVERY-DEBUG] network offline');
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    });
+
+    window.addEventListener('online', function() {
+      console.log('[RECOVERY-DEBUG] network online');
+      var sid = localStorage.getItem('astroved_session_id');
+      if (sid) {
+        console.log('[RECOVERY-DEBUG] reconnect started');
+        console.log('[RECOVERY-DEBUG] reconnect session: ' + sid);
+        performRestore(sid);
+      }
+    });
 
     document.addEventListener('click', function (e) {
       var l = $('av-launcher');
