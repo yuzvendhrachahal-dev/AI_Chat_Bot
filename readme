@@ -1,404 +1,130 @@
-# AstroVed.AI Chatbot & Agent Dashboard
+# AstroVed.AI Chatbot
 
-AI-powered AstroVed chatbot with Human Agent Dashboard.
+AI-powered AstroVed chatbot with a Human Agent Dashboard.
 
----
+## Requirements
 
-# Requirements
-
-- Python 3.10 or above
+- Python 3.10+
 - Git
-- Internet connection
-- Groq API Key
-- AstroVed JWT Token
+- MongoDB Atlas
+- Groq API key
+- AstroVed API/JWT credentials
 
----
+## Setup
 
-# 1. Clone Repository
+### 1. Clone
 
 ```bash
 git clone <YOUR_GITHUB_REPO_URL>
 cd AI_Chat_Bot
 ```
 
-Or extract the ZIP file if provided.
+### 2. Create virtual environment
 
----
-
-# 2. Create Virtual Environment
-
-### Windows
-
-```bash
-python -m venv vbot
-```
-
-Activate
-
-```bash
-vbot\Scripts\activate
-```
-
----
-
-### macOS / Linux
+Linux / macOS:
 
 ```bash
 python3 -m venv vbot
-```
-
-Activate
-
-```bash
 source vbot/bin/activate
 ```
 
-You should now see
-
-```text
-(vbot)
-```
-
----
-
-# 3. Install Dependencies
+Windows:
 
 ```bash
-pip install -r requirements.txt
-```
-
----
-
-# 4. Configure Environment Variables
-
-Create a file named
-
-```text
-.env
-```
-
-inside the project root.
-
-Example:
-
-```env
-GROQ_API_KEY=YOUR_GROQ_API_KEY
-
-ASTROVED_JWT_TOKEN=YOUR_ASTROVED_TOKEN
-
-GITHUB_TOKEN=YOUR_GITHUB_TOKEN
-
-GITHUB_REPO=YOUR_USERNAME/AI_Chat_Bot
-```
-
----
-
-# 5. Run Project
-
-```bash
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
-```
-
-When everything loads correctly, you should see
-
-```text
-Loaded 690 page chunks from knowledge base
-
-Application startup complete.
-
-Uvicorn running on
-
-http://127.0.0.1:8000
-```
-
----
-
-# Local URLs
-
-## API Status
-
-```
-http://127.0.0.1:8000/
-```
-
-Returns
-
-```json
-{
-    "status":"AstroVed.AI is online"
-}
-```
-
----
-
-## Swagger API
-
-```
-http://127.0.0.1:8000/docs
-```
-
----
-
-## Chatbot
-
-```
-http://127.0.0.1:8000/app
-```
-
----
-
-## Agent Dashboard
-
-```
-http://127.0.0.1:8000/agent/dashboard
-```
-
----
-
-# Agent Login
-
-Username
-
-```
-agent1
-```
-
-Password
-
-```
-astroved123
-```
-
----
-
-# Project Flow
-
-```
-User
-
-↓
-
-/app
-
-↓
-
-/chat API
-
-↓
-
-Knowledge Base Search
-
-↓
-
-Groq LLM
-
-↓
-
-Bot Response
-
-↓
-
-CRM Keywords?
-
-↓
-
-No
-│
-└── Continue Chat
-
-Yes
-
-↓
-
-Agent Queue
-
-↓
-
-/agent/dashboard
-
-↓
-
-Agent Reply
-
-↓
-
-User Receives Reply
-```
-
----
-
-# Common Commands
-
-Activate Environment
-
-Windows
-
-```bash
+python -m venv vbot
 vbot\Scripts\activate
 ```
 
-macOS/Linux
+### 3. Install dependencies
 
 ```bash
-source vbot/bin/activate
+pip install -r requirements.txt
 ```
 
-Run
+### 4. Configure `.env`
+
+Create `.env` in the project root.
+
+```env
+ENV=development
+
+MONGO_URI=YOUR_MONGODB_ATLAS_URI
+MONGO_DB=astroved_chatbot
+
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+GROQ_MODEL=openai/gpt-oss-20b
+
+ASTROVED_API_BASE=YOUR_ASTROVED_API_BASE
+ASTROVED_JWT_TOKEN=YOUR_ASTROVED_JWT_TOKEN
+```
+
+Do not commit `.env` or expose API keys and passwords in Git.
+
+## Run
+
+For local development:
 
 ```bash
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Deactivate
+## Local URLs
 
-```bash
-deactivate
+Chatbot:
+
+```text
+http://127.0.0.1:8000/app
 ```
 
----
+Agent Dashboard:
 
-# Common Errors
-
-## Python not found
-
-Use
-
-```bash
-python3
+```text
+http://127.0.0.1:8000/agent/dashboard
 ```
 
-instead of
+API:
 
-```bash
-python
+```text
+http://127.0.0.1:8000/
 ```
 
----
+Swagger is available during development:
 
-## Uvicorn not found
-
-```bash
-pip install uvicorn
+```text
+http://127.0.0.1:8000/docs
 ```
 
----
+## Production
 
-## Missing package
+Set:
 
-```bash
-pip install -r requirements.txt
+```env
+ENV=production
 ```
 
----
-
-## Port already in use
-
-Run
-
-```bash
-lsof -i :8000
-```
-
-Kill process
-
-```bash
-kill -9 <PID>
-```
-
-or simply use another port
-
-```bash
-uvicorn main:app --reload --host 127.0.0.1 --port 8001
-```
-
----
-
-## API Key Error
-
-Check
-
-```
-.env
-```
-
-contains
-
-```
-GROQ_API_KEY
-```
-
----
-
-## Chatbot says
-
-```
-Server is waking up...
-```
-
-This usually means the frontend is pointing to the wrong API URL.
-
-Verify that:
-
-```javascript
-var API = window.location.origin;
-```
-
-is present in
-
-```
-index.html
-```
-
-and
-
-```
-widget_content.js
-```
-
-Then hard refresh the browser.
-
----
-
-# Render Deployment
-
-Build Command
-
-```bash
-pip install -r requirements.txt
-```
-
-Start Command
+Run:
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
-Environment Variables
+The production deployment uses MongoDB Atlas for chatbot data.
 
-```
-GROQ_API_KEY
+## Features
 
-ASTROVED_JWT_TOKEN
+- AstroVed AI Chatbot
+- Human Agent Dashboard
+- MongoDB Atlas
+- Groq LLM
+- Knowledge Base
+- Human Handoff
+- Chat Session Management
+- Chat History
+- Agent Analytics
+- Responsive Chatbot UI
 
-GITHUB_TOKEN
+## Important
 
-GITHUB_REPO
-```
+Keep production credentials only in the server environment.
 
----
-
-# Current Status
-
-✅ Chatbot
-
-✅ Agent Dashboard
-
-✅ Human Handoff
-
-✅ Knowledge Base Search
-
-✅ Groq AI Integration
-
-✅ SQLite Database
-
-✅ Local Development Ready
+Do not commit `.env` to Git.

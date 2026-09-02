@@ -5,3 +5,7 @@ __pycache__/
 .env
 chat.db
 vbot/
+venv/
+.vscode/
+nivash docs/
+nivash md fol/
