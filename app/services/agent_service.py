@@ -200,6 +200,6 @@ def process_agent_close(session_id: str) -> dict:
         save_message(
             session_id,
             "system",
-            "Agent has ended this conversation. Chat history preserved.",
+            "Agent has ended this conversation.",
         )
     return {"status": "closed"}
