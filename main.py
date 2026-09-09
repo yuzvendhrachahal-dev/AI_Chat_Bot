@@ -60,7 +60,8 @@ app = FastAPI(**kwargs)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        #"https://www.astrovedchat.com",
+        #"https://chatbot.astroved.com/app",
+        #"https://chatbot.astroved.com/agent/dashboard",
         "*",
     ],
     allow_credentials=False,
